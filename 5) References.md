@@ -1,4 +1,4 @@
-nav_include: 5
+{nav_include: 5}
 # REFERENCES
 
 

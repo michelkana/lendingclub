@@ -1,4 +1,4 @@
-nav_include: 3
+{nav_include: 3}
 ---
 title: Rejects
 notebook: 3) EDA.ipynb

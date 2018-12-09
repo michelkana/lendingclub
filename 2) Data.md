@@ -1,4 +1,4 @@
-nav_include: 2
+{nav_include: 2}
 ---
 title: Loan Rejection Data Cleaning
 notebook: 2) Data.ipynb
