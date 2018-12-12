@@ -2330,7 +2330,11 @@ model_fairness_check(df_test_candidates, ['female_pct','Black_pct', 'Native_pct'
 
 **Disparate impact** in United States labor law refers to "practices in employment, housing, and other areas that adversely affect one group of people of a protected characteristic more than another, even though rules applied by employers or landlords are formally neutral."[18]. It measures the difference that the majority and protected classes get a particular outcome. We use the function below adapted from [16] to check on disparate impact based on the legal definition of threshold of 80%. This is determined with respect to a protected class.
 
-The input of the function is an array of binary values (1 if the sample is a loan requested by a female, 0 else) and a second array of binary values (1 if the model predicted that the loan will Charge Off, 0 else). If P(male|chargeoff)/P(female|chargeoff) <= 80% then the definition of disparate impact is satisfied. The output is True is the model demonstrates discrimination, False else. The degree of discrimation is also provided between 0 and 1.
+The input of the function is an array of binary values (1 if the sample is a loan requested by a female, 0 else) and a second array of binary values (1 if the model predicted that the loan will Charge Off, 0 else). 
+
+If P(male|chargeoff)/P(female|chargeoff) <= 80% then the definition of disparate impact is satisfied. 
+
+The output is True if the model demonstrates discrimination, False else. The degree of discrimation is also provided between 0 and 1.
 
 
 
