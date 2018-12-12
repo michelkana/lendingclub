@@ -1,26 +1,6 @@
----
-title: Rejects
-notebook: CS109aLendingClub_EDA.ipynb
----
-
-## Contents
 {:.no_toc}
 *  
 {: toc}
-
-
-
-```python
-#RUN THIS CELL 
-import requests
-from IPython.core.display import HTML
-styles = requests.get("https://raw.githubusercontent.com/Harvard-IACS/2018-CS109A/master/content/styles/cs109.css").text
-HTML(styles)
-```
-
-
-
-
 
 <style>
 blockquote { background: #AEDE94; }
@@ -78,27 +58,6 @@ header {
     color: black;
 }
 </style>
-
-
-
-
-
-<hr style="height:2pt">
-
-
-
-```python
-import numpy as np
-import pandas as pd
-import matplotlib
-import matplotlib.pyplot as plt
-%matplotlib inline
-
-import seaborn as sns
-sns.set()
-
-```
-
 
 
 In this section we explore and analyze data about accepted loans since 2007 till 2018. 
