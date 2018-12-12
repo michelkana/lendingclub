@@ -21,7 +21,7 @@ np.random.seed(9999)
 
 
 ```
-df_loan_accepted_census_cleaned = pd.read_csv('df_loan_accepted_census_cleaned_closed_2007-2015_10.csv')
+df_loan_accepted_census_cleaned = pd.read_csv('https://digintu.tech/tmp/cs109a/df_loan_accepted_census_cleaned_closed_2007-2015_10.csv')
 ```
 
 
