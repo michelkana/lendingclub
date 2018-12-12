@@ -3,7 +3,11 @@
 {: toc}
 
 
+<hr style="height:2pt">
 
+
+
+# Prediction of Charge-Offs
 
 We will consider the loan status as the response variable, a binary outcome for a loan with value 1 for fully paid and 0 for Charged Off.
 
@@ -11,28 +15,14 @@ We will work with data previously cleaned and augmented with census information.
 
 
 
-```python
-np.random.seed(9999)
+```
+df_loan_accepted_census_cleaned = pd.read_csv('df_loan_accepted_census_cleaned_closed.csv')
 ```
 
 
 
 
-```python
-#df_loan_accepted_census_cleaned = pd.read_csv('http://digintu.tech/tmp/cs109a/df_loan_accepted_census_cleaned_closed_2007-2015.csv')
-
-#df_loan_accepted_census_cleaned = pd.read_csv('http://digintu.tech/tmp/cs109a/df_loan_accepted_census_cleaned_closed_2007-2015_10.csv') 
-
-#50% of all closed loans between 2007 and 2015, cleaned and augmented with census data - 364 MB
-#df_loan_accepted_census_cleaned = pd.read_csv('http://digintu.tech/tmp/cs109a/df_loan_accepted_census_cleaned_closed_2007-2015_50.csv').sample(frac=.1)
-
-df_loan_accepted_census_cleaned = pd.read_csv('http://digintu.tech/tmp/cs109a/df_loan_accepted_census_cleaned_closed_2007-2015_10.csv').sample(frac=.1)
 ```
-
-
-
-
-```python
 df_loan = df_loan_accepted_census_cleaned.copy()
 df_loan = df_loan[df_loan.loan_status.isin(['Charged Off', 'Fully Paid'])]
 ```
@@ -52,12 +42,11 @@ In this section we use a model-based approach of features selection using bagged
 
 ### Manual features selection
 
-Using domain knowledge, we remove a list of features as manual feature selection. 
 The following list of predictors are those which we MUST not use since they are data gathered AFTER the loan is funded. The reason to exclude them is because these features will not be available in unseen future dataset. Those features are highly correlated to charged-off loans and would otherwise bias our results.
 
 
 
-```python
+```
 not_predictor = [
 'chargeoff_within_12_mths',   
 'collection_recovery_fee',
@@ -105,16 +94,11 @@ not_predictor = [
 ```
 
 
-**Dropping non-relevant columns**
-
-
-Features like 'index', 'id', 'url' and so on are dropped as they are not relevant to our goal of loan status prediction.
-
 We drop the index column.
 
 
 
-```python
+```
 not_predictor  += ['Unnamed: 0', 'Unnamed: 0.1', 'Unnamed: 0.1.1']
 ```
 
@@ -123,7 +107,7 @@ We drop the id, URL
 
 
 
-```python
+```
 not_predictor  += ['id', 'url']
 ```
 
@@ -132,7 +116,7 @@ We drop the employment title, loan title and description, which contains too man
 
 
 
-```python
+```
 not_predictor += ['emp_title', 'title', 'desc']
 ```
 
@@ -141,7 +125,7 @@ We drop the success flag since it contains the same information as the loan stat
 
 
 
-```python
+```
 not_predictor += ['success']
 ```
 
@@ -150,7 +134,7 @@ We remove following the issue date, quarter and year, which is less relevant for
 
 
 
-```python
+```
 not_predictor += ['issue_q', 'issue_d']
 ```
 
@@ -161,12 +145,12 @@ The term is calculated using the amount and the interest rate.
 
 It follows that `int_rate`, `grade`, `sub_grade` are correlated. Furthermore `loan_amnt`, `int_rate` and `term` define the `installment`. These relationships would bring collinearity into our model for features selection.
 
-We will therefore work with `loan_amnt`, `grade`, `sub_grade` and `term`. If it comes out that these features are important for predicting charge-off, we will conclude that their related variables `int_rate`, and `installment` are also important.
+We will therefore work with `loan_amnt`, `sub_grade` and `term`. If it comes out that these features are important for predicting charge-off, we will conclude that their related variables `grade`, `int_rate`, and `installment` are also important.
 
 
 
-```python
-not_predictor += ['int_rate', 'installment']
+```
+not_predictor += ['grade', 'int_rate', 'installment']
 ```
 
 
@@ -190,30 +174,19 @@ However, These two are created, and undoubtedly updated, throughout the loan lif
 
 
 
-```python
+```
 not_predictor += ['sec_app_fico_range_high', 'sec_app_fico_range_low', 'last_fico_range_high', 'last_fico_range_low']
 ```
 
 
-As our EDA has shown, information related to gender, race, zip code and state can lead to some unfair handling by a predictive model. We will assume here that removing them as predictor would solve this issue. We further assume that the remaining predictors will not be correlated in any way with census information.
+**Correlation and redundancy**
+
+Features-pairs which correlate by either -1 or +1 can be considered to be redundant. However High absolute correlation does not imply redundancy of features in the context of classification, see textbook Feature Extraction - Foundations and Applications by I. Guyon et al. (p.10, figure 2 (e)). Therefore we will have a closer look at each correlation.
 
 
 
-```python
-not_predictor += ['addr_state','zip_code','Population', 'median_income_2016', 
-               'female_pct', 'male_pct', 
-               'Black_pct', 'White_pct', 'Native_pct', 'Asian_pct', 'Hispanic_pct', 
-               'household_family_pct', 'poverty_level_below_pct', 'Graduate_Degree_pct', 'employment_2016_rate']
 ```
-
-
-#### **Correlation and redundancy**
-
-Features-pairs which correlate by either -1 or +1 can be considered to be redundant. However High absolute correlation does not imply redundancy of features in the context of classification, see textbook [4] . Therefore we will have a closer look at each correlation.
-
-
-
-```python
+#https://chrisalbon.com/machine_learning/feature_selection/drop_highly_correlated_features/
 def find_high_correlated_features(frame):
     new_corr = frame.corr()
     new_corr.loc[:,:] = np.tril(new_corr, k=-1) 
@@ -225,33 +198,36 @@ find_high_correlated_features(df_loan_accepted_census_cleaned[predictor])
 ```
 
 
-    num_op_rev_tl      num_rev_tl_bal_gt_0           0.846272
-                       num_sats                      0.838678
-    fico_range_low     fico_range_high               1.000000
-    avg_cur_bal        tot_cur_bal                   0.847239
-    open_acc           num_sats                      0.898390
-    total_bc_limit     bc_open_to_buy                0.839896
-    num_rev_accts      num_bc_tl                     0.868880
-                       num_op_rev_tl                 0.811552
-    num_actv_bc_tl     num_rev_tl_bal_gt_0           0.829723
-                       num_bc_sats                   0.844163
-    total_bal_ex_mort  total_il_high_credit_limit    0.874998
-    tot_hi_cred_lim    tot_cur_bal                   0.985505
-                       avg_cur_bal                   0.818588
-    num_actv_rev_tl    num_rev_tl_bal_gt_0           0.989059
-                       num_op_rev_tl                 0.842765
-                       num_actv_bc_tl                0.833425
+    open_acc                    num_sats               0.901231
+    num_op_rev_tl               num_sats               0.838576
+                                num_rev_tl_bal_gt_0    0.848086
+    fico_range_low              fico_range_high        1.000000
+    male_pct                    female_pct            -1.000000
+    num_actv_bc_tl              num_bc_sats            0.846392
+                                num_rev_tl_bal_gt_0    0.831199
+    avg_cur_bal                 tot_hi_cred_lim        0.807931
+    tot_cur_bal                 tot_hi_cred_lim        0.977334
+                                avg_cur_bal            0.843135
+    total_bc_limit              bc_open_to_buy         0.839302
+    total_il_high_credit_limit  total_bal_ex_mort      0.873770
+    num_actv_rev_tl             num_rev_tl_bal_gt_0    0.988788
+                                num_op_rev_tl          0.844565
+                                num_actv_bc_tl         0.833955
+    num_rev_accts               num_op_rev_tl          0.812922
+    num_bc_tl                   num_rev_accts          0.870041
     dtype: float64
     
 
 
 
-```python
-not_predictor += ['fico_range_low','num_rev_tl_bal_gt_0', 'num_actv_rev_tl','open_il_12m','open_rv_12m','avg_cur_bal','tot_hi_cred_lim','num_bc_tl']
+```
+not_predictor += ['fico_range_low','male_pct','num_rev_tl_bal_gt_0', 'num_actv_rev_tl','open_il_12m','open_rv_12m','avg_cur_bal','tot_hi_cred_lim','num_bc_tl']
 ```
 
 
 `fico_range_low` and `fico_range_low` are highly correlated. We keep the high value.
+
+`male_pct` The probability for the borrower being male can be removed, since `female_pct` conveys that information as well.
 
 The Number of revolving trades with balance >0 `num_rev_tl_bal_gt_0` and the Number of currently active revolving trades `num_actv_rev_tl` are highly correlated with the Number of currently active bankcard accounts `num_actv_bc_tl`. It is safe to remove the formers for our classification task for identifying fully paid loans from charged-off ones.
 
@@ -273,7 +249,7 @@ For each remaining feature, we will plot the distribution of their values in bot
 
 
 
-```python
+```
 nb = 1
 for var in [x for x in df_loan.columns.values if x not in not_predictor]:
     if df_loan[var].dtype == np.float64 or df_loan[var].dtype == np.int64:
@@ -290,14 +266,16 @@ for var in [x for x in df_loan.columns.values if x not in not_predictor]:
 ```
 
 
-    C:\Anaconda\lib\site-packages\statsmodels\nonparametric\kde.py:488: RuntimeWarning: invalid value encountered in true_divide
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/statsmodels/nonparametric/kde.py:488: RuntimeWarning: invalid value encountered in true_divide
       binned = fast_linbin(X, a, b, gridsize) / (delta * nobs)
-    C:\Anaconda\lib\site-packages\statsmodels\nonparametric\kdetools.py:34: RuntimeWarning: invalid value encountered in double_scalars
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/statsmodels/nonparametric/kdetools.py:34: RuntimeWarning: invalid value encountered in double_scalars
       FAC1 = 2*(np.pi*bw/RANGE)**2
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/numpy/core/_methods.py:26: RuntimeWarning: invalid value encountered in reduce
+      return umr_maximum(a, axis, None, out, keepdims)
     
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_38_1.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_33_1.png)
 
 
 Looking at the plots above we see that the distribution for census-related features is almost the same accross both classes of loans. We will investigate those features closer using mode-based features selection in the next section.
@@ -308,7 +286,7 @@ We turn the loan status into a binary variable
 
 
 
-```python
+```
 df_loan.replace({'loan_status':{'Charged Off': 0, 'Fully Paid': 1}}, inplace=True)
 df_loan.loan_status = df_loan.loan_status.astype('int')
 ```
@@ -318,7 +296,7 @@ We convert the `earliest_cr_line` feature to the number of years between the ear
 
 
 
-```python
+```
 df_loan.earliest_cr_line = pd.to_datetime(df_loan.issue_d, format='%b-%Y').dt.to_period('Y') - pd.to_datetime(df_loan.earliest_cr_line, format='%b-%Y').dt.to_period('Y')
 df_loan.earliest_cr_line = df_loan.earliest_cr_line.astype('int')
 ```
@@ -328,16 +306,16 @@ We turn categorical features into binary variables.
 
 
 
-```python
+```
 df_loan.replace({'term':{36: 1, 60: 0}},inplace=True)
 ```
 
 
 
 
-```python
-df_loan = pd.get_dummies(df_loan, columns=['emp_length', 'home_ownership','purpose','issue_m',
-                                               'grade', 'sub_grade','earliest_cr_line'], drop_first=True)
+```
+df_loan = pd.get_dummies(df_loan, columns=['sub_grade', 'emp_length', 'home_ownership',
+                                          'purpose', 'issue_m', 'addr_state', 'zip_code','earliest_cr_line'], drop_first=True)
 ```
 
 
@@ -347,61 +325,51 @@ Let's remove all indentified features above.
 
 
 
-```python
+```
 df_loan.drop(columns=list(set(not_predictor) & set(df_loan.columns.values)), inplace=True)
 ```
 
 
 ### Imbalanced Dataset
 
+
+
+```
 As we see below, the data is unbalanced, with Fully Paid loans being the majority class.
+```
 
 
 
-```python
-nb = df_loan.loan_status.value_counts()
-nb
+
+```
+df_loan.loan_status.value_counts()
 ```
 
 
 
 
 
-    1    63241
-    0    14672
+    1    633159
+    0    146801
     Name: loan_status, dtype: int64
 
 
-
-Here, 1 - Fully Paid loans and 0 - Charged Off loans. 
-
-
-
-```python
-print("We notice, {0:.2%} of the total loans are Charged Off, and about {1:.2%} loans are Fully Paid.".format(nb[0]/np.sum(nb),nb[1]/np.sum(nb)))
-```
-
-
-    We notice, 18.39% of the total loans are Charged Off, and about 81.61% loans are Fully Paid.
-    
-
-**Train/Test/Validation Data Split**
 
 `X` is the feature matrix. `Y` is the response vector.
 
 
 
-```python
+```
 X, Y = df_loan[df_loan.columns.difference(['loan_status'])], df_loan['loan_status']
 ```
 
 
-We choose to split the whole dataset to 90% training, 10% test, with stratify, resulting in consistent class distribution between training and test sets
+We choose to split the whole dataset to 90% training, 10% test.
 
 
 
-```python
-X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, stratify=Y)
+```
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, random_state=9001)
 ```
 
 
@@ -409,30 +377,16 @@ Let's further split the training set into a 80% training and a 20% validation se
 
 
 
-```python
-X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, stratify=y_train)
+```
+X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=9001)
 ```
 
-
-
-
-```python
-print("We verify that the proportion of Charged Off is about the same: {0:.2%} in train, {1:.2%} in val and {2:.2%} in test".format(len(y_train[y_train==0])/len(y_train),
-                                                                                                                                   len(y_val[y_val==0])/len(y_val),
-                                                                                                                                   len(y_test[y_test==0])/len(y_test)))
-```
-
-
-    We verify that the proportion of Charged Off is about the same: 18.83% in train, 18.83% in val and 18.83% in test
-    
-
-We will now have a closer look at the imbalanced classes.
 
 Let's reduce the dimension of a subset of the data using Principal Component Analysis (PCA) and display the imbalanced classes in a 2D plot.
 
 
 
-```python
+```
 X_train_subset = X_train[:100]
 y_train_subset = y_train[:100]
 pca = PCA(n_components=2)
@@ -442,7 +396,7 @@ X_train_subset = pca.fit_transform(X_train_subset)
 
 
 
-```python
+```
 y_train_subset.value_counts()
 ```
 
@@ -450,15 +404,16 @@ y_train_subset.value_counts()
 
 
 
-    1    82
-    0    18
+    1    77
+    0    23
     Name: loan_status, dtype: int64
 
 
 
 
 
-```python
+```
+# https://www.kaggle.com/rafjaa/resampling-strategies-for-imbalanced-datasets
 def plot_2d_space(X, y, label='Classes'):   
     colors = ['#1F77B4', '#FF7F0E']
     markers = ['o', 's']
@@ -479,16 +434,14 @@ def plot_2d_space(X, y, label='Classes'):
 
 
 
-```python
+```
 plot_2d_space(X_train_subset, y_train_subset, 'Imbalanced dataset')
 ```
 
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_67_0.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_58_0.png)
 
-
-The plot above is a visual confirmation of the imbalanced classes in our data.
 
 A widely adopted technique for dealing with highly unbalanced datasets is called resampling. It consists of either removing samples from the majority class (under-sampling) or adding more examples from the minority class (over-sampling). Both strategies can also be applied at the same time.
 
@@ -496,26 +449,14 @@ As shown below with under-sampling, we tend to loose valuable information, which
 
 
 
-```python
+```
 rus = RandomUnderSampler(return_indices=True)
 X_train_subset_rus, y_train_subset_rus, id_rus = rus.fit_sample(X_train_subset, y_train_subset)
 print(X_train_subset.shape[0] - X_train_subset_rus.shape[0], 'random samples removed')
 plot_2d_space(X_train_subset_rus, y_train_subset_rus, 'Random under-sampling')
 ```
 
-
-    64 random samples removed
-    
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_69_1.png)
-
-
-In over-sampling the most naive strategy is to generate new samples by randomly sampling with replacement the current available samples, which can cause overfitting.
-
-
-
-```python
+```
 ros = RandomOverSampler()
 X_train_subset_ros, y_train_subset_ros = ros.fit_sample(X_train_subset, y_train_subset)
 print(X_train_subset_ros.shape[0] - X_train_subset.shape[0], 'random samples added')
@@ -523,18 +464,18 @@ plot_2d_space(X_train_subset_ros, y_train_subset_ros, 'Random over-sampling')
 ```
 
 
-    64 random samples added
+    54 random samples added
     
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_71_1.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_62_1.png)
 
 
-A number of more sophisticated resapling techniques have been proposed in the scientific literature, especially using the Python library imbalanced-learn [7]. SMOTE (Synthetic Minority Oversampling TEchnique) consists of creating new samples for the minority class, by picking a sample from that class and computing the k-nearest neighbors, then adding a new sample between the chosen sample and its neighbors.
+A number of more sophisticated resapling techniques have been proposed in the scientific literature, especially using the Python library imbalanced-learn (https://imbalanced-learn.org). SMOTE (Synthetic Minority Oversampling TEchnique) consists of creating new samples for the minority class, by picking a sample from that class and computing the k-nearest neighbors, then adding a new sample between the chosen sample and its neighbors.
 
 
 
-```python
+```
 smote = SMOTE(ratio='minority')
 X_train_subset_sm, y_train_subset_sm = smote.fit_sample(X_train_subset, y_train_subset)
 
@@ -543,21 +484,21 @@ plot_2d_space(X_train_subset_sm, y_train_subset_sm, 'SMOTE over-sampling')
 
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_73_0.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_64_0.png)
 
 
-**We will use SMOTE to balance our training dataset.** 
+We will use SMOTE to balance our training dataset.
 
 
 
-```python
+```
 X_train, y_train = smote.fit_sample(X_train, y_train)
 ```
 
 
 
 
-```python
+```
 print('The Charged-Off to Fully Paid ratio in the balanced training set is now: ', len(y_train[y_train==0])/len(y_train[y_train==1]))
 ```
 
@@ -565,52 +506,75 @@ print('The Charged-Off to Fully Paid ratio in the balanced training set is now: 
     The Charged-Off to Fully Paid ratio in the balanced training set is now:  1.0
     
 
+
+
+```
+#np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_train_upsampled_smote.csv', 
+#           X_train, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))
+```
+
+
+
+
+```
+#np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_train_upsampled_smote.csv', 
+#           y_train, fmt='%.2f', delimiter=',', header='loan_status')
+```
+
+
 ### Model-based features selection
 
-**Insights on features importance**
+We will use classifiers on the dataset in order to get a better understanding on how features are related to loan outcome as fully paid or unpaid.
 
-Looking at the results above, we can bring in following conclusions:
-
-- The term is the most important element each investor has to care about. 68-months loans are highly risky.
-- The purpose of loan for credit cards payment brings more confidence to an investor.
-- Borrowers who have 10 or more years verified working experience are the most trustworthy investment.
-- Home ownership plays a significant role.
-- The state of California is a significant factor to be considered when looking at the likelihood of Charged-Off
-- Lenders should look at financial KPIs such as inq_last_6mths, num_tl_op_past_12m and acc_open_past_24mths; not just at FICO score, which are less relevant than these KPIs.
-- Debt-to-income ratio and annual income can be missleading, and shoudn't be always considered as the most important factors.
-- The time of the year when the loan is requested is not so relevant.
-
-
-We will use classifiers on the training dataset in order to get a better understanding on how features are related to loan outcome as fully paid or unpaid. This will help us reducing the dimensionality of our data by selecting the most important features.
+The function below fit a random forest to the training set and display the classification accuracy on test.
 
 
 
-```python
-randomf = RandomForestClassifier(n_estimators=100, max_depth=None, oob_score=True).fit(X_train, y_train)
+```
+def run_random_forest(X_train, y_train, X_val, y_val, size, depth):
+    randomf = RandomForestClassifier(n_estimators=size, max_depth=depth).fit(X_train, y_train)
+    accuracy_train = randomf.score(X_train, y_train)
+    accuracy_val = np.mean(cross_val_score(randomf, X_val, y_val, cv=5, scoring='roc_auc'))
+    print('RANDOM FOREST')
+    print('Number of trees: ', size)
+    print('Tree depth: ', depth)
+    print('Accuracy, Training Set: {0:0.2%}'.format(accuracy_train))
+    print('CV Accuracy, Val Set: {0:0.2%}'.format(accuracy_val))
+    return accuracy_train, accuracy_val, randomf
 ```
 
 
+We can now see how a forest of 100 depth-20 trees performs on our data.
 
 
-```python
-print('Accuracy, Training Set: {0:0.2%}'.format(randomf.score(X_train, y_train)))
-print('OOB Score, Training Set: {0:0.2%}'.format(randomf.oob_score_))
-print('Accuracy, Validation Set: {0:0.2%}'.format(randomf.score(X_val, y_val)))
+
+```
+rf_accuracy_train, rf_accuracy_val, randomf = run_random_forest(X_train, y_train, X_val, y_val, 100, 20)
 ```
 
 
-    Accuracy, Training Set: 100.00%
-    OOB Score, Training Set: 88.60%
-    Accuracy, Validation Set: 81.11%
+    RANDOM FOREST
+    Number of trees:  100
+    Tree depth:  20
+    Accuracy, Training Set: 94.77%
+    CV Accuracy, Val Set: 69.57%
     
 
-The random forest is clearly overfit, and is obviously picking the majority class in the validation set.
+
+
+```
+print('CV Accuracy, Test Set: {0:0.2%}'.format(np.mean(cross_val_score(randomf, X_test, y_test, cv=5, scoring='roc_auc'))))
+```
+
+
+    CV Accuracy, Test Set: 69.94%
+    
 
 Below we have a ranking of features as computed by our random forest, depending on their Gini importance in the prediction of loan outcome.
 
 
 
-```python
+```
 feature_importances = pd.DataFrame(randomf.feature_importances_,
                                    index = X.columns,
                                     columns=['importance']).sort_values('importance', ascending=False).reset_index().rename(columns={'index':'feature'})
@@ -647,52 +611,52 @@ feature_importances.head(10)
     <tr>
       <th>0</th>
       <td>term</td>
-      <td>0.070095</td>
+      <td>0.072537</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>grade_B</td>
-      <td>0.044556</td>
+      <td>purpose_debt_consolidation</td>
+      <td>0.050164</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>grade_D</td>
-      <td>0.036834</td>
+      <td>inq_last_6mths</td>
+      <td>0.037292</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>purpose_debt_consolidation</td>
-      <td>0.035743</td>
+      <td>emp_length_10</td>
+      <td>0.029273</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>grade_C</td>
-      <td>0.035003</td>
+      <td>acc_open_past_24mths</td>
+      <td>0.023912</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>inq_last_6mths</td>
-      <td>0.034303</td>
+      <td>num_tl_op_past_12m</td>
+      <td>0.023211</td>
     </tr>
     <tr>
       <th>6</th>
       <td>purpose_credit_card</td>
-      <td>0.024774</td>
+      <td>0.023188</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>grade_E</td>
-      <td>0.023738</td>
+      <td>percent_bc_gt_75</td>
+      <td>0.018610</td>
     </tr>
     <tr>
       <th>8</th>
-      <td>emp_length_10</td>
-      <td>0.023220</td>
+      <td>fico_range_high</td>
+      <td>0.017118</td>
     </tr>
     <tr>
       <th>9</th>
-      <td>acc_open_past_24mths</td>
-      <td>0.021544</td>
+      <td>mths_since_recent_inq</td>
+      <td>0.016534</td>
     </tr>
   </tbody>
 </table>
@@ -706,31 +670,29 @@ We will now use SKLearn meta-transformet SelectFromModel to discard irrelevant f
 
 
 
-```python
-fs_model = SelectFromModel(randomf, prefit=True)
+```
+fs_model = SelectFromModel(randomf, prefit=True, threshold=0.004)
 outcome = fs_model.get_support()
 features_list_orig = X.columns.values
 features_list_new = []
 for i in range(0,len(features_list_orig)):
     if outcome[i]:
         features_list_new.append(features_list_orig[i])
-print('{} features were selected from the {} original hot-encoded ones:'.format(len(features_list_new), len(features_list_orig)))
-print('')
+print('{} features were selected from the {} original hot-encoded ones'.format(len(features_list_new), len(features_list_orig)))
 print(features_list_new)
 ```
 
 
-    52 features were selected from the 186 original hot-encoded ones:
+    86 features were selected from the 1091 original hot-encoded ones
+    ['Asian_pct', 'Black_pct', 'Graduate_Degree_pct', 'Hispanic_pct', 'Native_pct', 'Population', 'White_pct', 'acc_open_past_24mths', 'addr_state_CA', 'addr_state_TX', 'annual_inc', 'bc_open_to_buy', 'bc_util', 'delinq_2yrs', 'dti', 'earliest_cr_line_12', 'earliest_cr_line_14', 'emp_length_1', 'emp_length_10', 'emp_length_2', 'emp_length_3', 'emp_length_5', 'employment_2016_rate', 'female_pct', 'fico_range_high', 'home_ownership_OWN', 'home_ownership_RENT', 'household_family_pct', 'inq_last_6mths', 'issue_m_Aug', 'issue_m_Dec', 'issue_m_Jan', 'issue_m_Jul', 'issue_m_Jun', 'issue_m_Mar', 'issue_m_May', 'issue_m_Nov', 'issue_m_Oct', 'issue_m_Sep', 'loan_amnt', 'median_income_2016', 'mo_sin_old_il_acct', 'mo_sin_old_rev_tl_op', 'mo_sin_rcnt_rev_tl_op', 'mo_sin_rcnt_tl', 'mort_acc', 'mths_since_last_delinq', 'mths_since_last_major_derog', 'mths_since_last_record', 'mths_since_recent_bc', 'mths_since_recent_bc_dlq', 'mths_since_recent_inq', 'mths_since_recent_revol_delinq', 'num_accts_ever_120_pd', 'num_actv_bc_tl', 'num_bc_sats', 'num_il_tl', 'num_op_rev_tl', 'num_rev_accts', 'num_sats', 'num_tl_op_past_12m', 'open_acc', 'pct_tl_nvr_dlq', 'percent_bc_gt_75', 'poverty_level_below_pct', 'pub_rec', 'pub_rec_bankruptcies', 'purpose_credit_card', 'purpose_debt_consolidation', 'purpose_home_improvement', 'revol_bal', 'sub_grade_A5', 'sub_grade_B1', 'sub_grade_B2', 'sub_grade_B3', 'sub_grade_B4', 'sub_grade_B5', 'sub_grade_C1', 'sub_grade_D2', 'term', 'tot_cur_bal', 'total_acc', 'total_bal_ex_mort', 'total_bc_limit', 'total_il_high_credit_limit', 'total_rev_hi_lim']
     
-    ['acc_open_past_24mths', 'annual_inc', 'bc_open_to_buy', 'bc_util', 'delinq_2yrs', 'dti', 'emp_length_1', 'emp_length_10', 'fico_range_high', 'grade_B', 'grade_C', 'grade_D', 'grade_E', 'home_ownership_MORTGAGE', 'home_ownership_RENT', 'inq_last_6mths', 'issue_m_Oct', 'loan_amnt', 'mo_sin_old_il_acct', 'mo_sin_old_rev_tl_op', 'mo_sin_rcnt_rev_tl_op', 'mo_sin_rcnt_tl', 'mort_acc', 'mths_since_last_delinq', 'mths_since_last_major_derog', 'mths_since_last_record', 'mths_since_recent_bc', 'mths_since_recent_bc_dlq', 'mths_since_recent_inq', 'mths_since_recent_revol_delinq', 'num_accts_ever_120_pd', 'num_actv_bc_tl', 'num_bc_sats', 'num_il_tl', 'num_op_rev_tl', 'num_rev_accts', 'num_sats', 'num_tl_op_past_12m', 'open_acc', 'pct_tl_nvr_dlq', 'percent_bc_gt_75', 'pub_rec', 'purpose_credit_card', 'purpose_debt_consolidation', 'revol_bal', 'term', 'tot_cur_bal', 'total_acc', 'total_bal_ex_mort', 'total_bc_limit', 'total_il_high_credit_limit', 'total_rev_hi_lim']
-    
 
 
 
-```python
+```
 loan_variables_selected = []
 for col in df_loan_accepted_census_cleaned.columns:
-    if len([s for s in features_list_new if s.startswith(col)])>0:
+    if len([s for s in features_list_new if col.startswith(s)])>0:
         loan_variables_selected.append(col)
 
 print('After hot-decoding, they corresponds to the following {} features from the original dataset.'.format(len(loan_variables_selected)))
@@ -739,10 +701,23 @@ print(loan_variables_selected)
 ```
 
 
-    After hot-decoding, they corresponds to the following 46 features from the original dataset.
+    After hot-decoding, they corresponds to the following 54 features from the original dataset.
     
-    ['loan_amnt', 'term', 'grade', 'emp_length', 'home_ownership', 'annual_inc', 'purpose', 'dti', 'delinq_2yrs', 'fico_range_high', 'inq_last_6mths', 'mths_since_last_delinq', 'mths_since_last_record', 'open_acc', 'pub_rec', 'revol_bal', 'total_acc', 'mths_since_last_major_derog', 'tot_cur_bal', 'total_rev_hi_lim', 'acc_open_past_24mths', 'bc_open_to_buy', 'bc_util', 'mo_sin_old_il_acct', 'mo_sin_old_rev_tl_op', 'mo_sin_rcnt_rev_tl_op', 'mo_sin_rcnt_tl', 'mort_acc', 'mths_since_recent_bc', 'mths_since_recent_bc_dlq', 'mths_since_recent_inq', 'mths_since_recent_revol_delinq', 'num_accts_ever_120_pd', 'num_actv_bc_tl', 'num_bc_sats', 'num_il_tl', 'num_op_rev_tl', 'num_rev_accts', 'num_sats', 'num_tl_op_past_12m', 'pct_tl_nvr_dlq', 'percent_bc_gt_75', 'total_bal_ex_mort', 'total_bc_limit', 'total_il_high_credit_limit', 'issue_m']
+    ['loan_amnt', 'term', 'annual_inc', 'dti', 'delinq_2yrs', 'fico_range_high', 'inq_last_6mths', 'mths_since_last_delinq', 'mths_since_last_record', 'open_acc', 'pub_rec', 'revol_bal', 'total_acc', 'mths_since_last_major_derog', 'tot_cur_bal', 'total_rev_hi_lim', 'acc_open_past_24mths', 'bc_open_to_buy', 'bc_util', 'mo_sin_old_il_acct', 'mo_sin_old_rev_tl_op', 'mo_sin_rcnt_rev_tl_op', 'mo_sin_rcnt_tl', 'mort_acc', 'mths_since_recent_bc', 'mths_since_recent_bc_dlq', 'mths_since_recent_inq', 'mths_since_recent_revol_delinq', 'num_accts_ever_120_pd', 'num_actv_bc_tl', 'num_bc_sats', 'num_il_tl', 'num_op_rev_tl', 'num_rev_accts', 'num_sats', 'num_tl_op_past_12m', 'pct_tl_nvr_dlq', 'percent_bc_gt_75', 'pub_rec_bankruptcies', 'total_bal_ex_mort', 'total_bc_limit', 'total_il_high_credit_limit', 'Population', 'median_income_2016', 'female_pct', 'Black_pct', 'White_pct', 'Native_pct', 'Asian_pct', 'Hispanic_pct', 'household_family_pct', 'poverty_level_below_pct', 'Graduate_Degree_pct', 'employment_2016_rate']
     
+
+**Insights on features importance**
+
+Looking at the results above, we can bring in following conclusions:
+
+- The term is the most important element each investor has to care about. 68-months loans are highly risky.
+- The purpose of loan for credit cards payment brings more confidence to an investor.
+- Borrowers who have 10 or more years verified working experience are the most trustworthy investment.
+- Home ownership plays a significant role.
+- The state of California is a significant factor to be considered when looking at the likelihood of Charged-Off
+- Lenders should look at financial KPIs such as inq_last_6mths, num_tl_op_past_12m and acc_open_past_24mths; not just at FICO score, which are less relevant than these KPIs.
+- Debt-to-income ratio and annual income can be missleading, and shoudn't be always considered as the most important factors.
+- The time of the year when the loan is requested is not so relevant.
 
 **Design Matrix with important features**
 
@@ -750,32 +725,12 @@ We can now create the new design matrix using the identified important features.
 
 
 
-```python
-print("Number of predictors after one-hot encoding is: ",X_train.shape[1])
+```
+X_train_new = fs_model.transform(X_train)
+X_val_new = fs_model.transform(X_val)
+X_test_new = fs_model.transform(X_test)
 ```
 
-
-    Number of predictors after one-hot encoding is:  184
-    
-
-
-
-```python
-X_train = fs_model.transform(X_train)
-X_val = fs_model.transform(X_val)
-X_test = fs_model.transform(X_test)
-```
-
-
-
-
-```python
-print("Number of predictors after feature selection is ", X_train.shape[1])
-```
-
-
-    Number of predictors after feature selection is  53
-    
 
 **Principal Components Analysis**
 
@@ -785,11 +740,11 @@ We first start with scaling the data.
 
 
 
-```python
-scaler = StandardScaler().fit(X_train)
-X_train_scaled = scaler.transform(X_train)
-X_val_scaled = scaler.transform(X_val)
-X_test_scaled = scaler.transform(X_test)
+```
+scaler = StandardScaler().fit(X_train_new)
+X_train_scaled = scaler.transform(X_train_new)
+X_val_scaled = scaler.transform(X_val_new)
+X_test_scaled = scaler.transform(X_test_new)
 ```
 
 
@@ -797,17 +752,17 @@ We decompose the scaled data with PCA
 
 
 
-```python
-n = X_train.shape[1]
+```
+n = X_train_new.shape[1]
 pca_fit = PCA(n).fit(X_train_scaled)
 ```
 
 
-In the plot below, we see that the dimension can be reduced to the number of components which explain at least 90% of variance in the data.
+In the plot below, we see that the dimension can be reduced to the number of components which explain at least 80% of variance in the data.
 
 
 
-```python
+```
 pca_var = np.cumsum(pca_fit.explained_variance_ratio_)
 plt.scatter(range(1,n+1),pca_var)
 plt.xlabel("PCA Dimensions")
@@ -817,95 +772,18 @@ plt.title("Variance Explained by PCA");
 
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_96_0.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_89_0.png)
 
 
 We can now rebuild our design matrix using the PCA components.
 
 
 
-```python
-pca_fit = PCA(25).fit(X_train_scaled)
-X_train_pca = pca_fit.transform(X_train)
-X_val_pca = pca_fit.transform(X_val)
-X_test_pca = pca_fit.transform(X_test)
+```
+pca_fit = PCA(40).fit(X_train_scaled)
 X_train_scaled_pca = pca_fit.transform(X_train_scaled)
 X_val_scaled_pca = pca_fit.transform(X_val_scaled)
 X_test_scaled_pca = pca_fit.transform(X_test_scaled)
-```
-
-
-**Helper function for Design Matrix**
-
-We summarize the above code in the function below, which create all design matrices need for our models.
-
-
-
-```python
-def get_design_matrices(df, variables = ['loan_amnt', 'term', 'sub_grade', 'grade', 'emp_length', 'home_ownership',
-           'annual_inc', 'loan_status', 'purpose', 'dti', 'delinq_2yrs',
-           'fico_range_high', 'inq_last_6mths', 'mths_since_last_delinq',
-           'mths_since_last_record', 'open_acc', 'pub_rec', 'revol_bal',
-           'revol_util', 'total_acc', 'collections_12_mths_ex_med',
-           'mths_since_last_major_derog', 'acc_now_delinq', 'tot_coll_amt',
-           'tot_cur_bal', 'total_rev_hi_lim', 'acc_open_past_24mths',
-           'bc_open_to_buy', 'bc_util', 'delinq_amnt', 'mo_sin_old_il_acct',
-           'mo_sin_old_rev_tl_op', 'mo_sin_rcnt_rev_tl_op', 'mo_sin_rcnt_tl',
-           'mort_acc', 'mths_since_recent_bc', 'mths_since_recent_bc_dlq',
-           'mths_since_recent_inq', 'mths_since_recent_revol_delinq',
-           'num_accts_ever_120_pd', 'num_actv_bc_tl', 'num_bc_sats',
-           'num_il_tl', 'num_op_rev_tl', 'num_rev_accts', 'num_sats',
-           'num_tl_120dpd_2m', 'num_tl_30dpd', 'num_tl_90g_dpd_24m',
-           'num_tl_op_past_12m', 'pct_tl_nvr_dlq', 'percent_bc_gt_75',
-           'pub_rec_bankruptcies', 'tax_liens', 'total_bal_ex_mort',
-           'total_bc_limit', 'total_il_high_credit_limit','earliest_cr_line']):
-    
-    # raw data
-    df_loan = df.copy()
-    df_loan = df_loan[df_loan.loan_status.isin(['Charged Off', 'Fully Paid'])]
-    df_loan = df_loan[variables]
-    # hot encoding
-    df_loan.replace({'loan_status':{'Charged Off': 1, 'Fully Paid': 0}}, inplace=True)
-    df_loan.loan_status = df_loan.loan_status.astype('int')
-    df_loan.replace({'term':{36: 1, 60: 0}},inplace=True)
-    df_loan = pd.get_dummies(df_loan, columns=['emp_length', 'home_ownership','purpose',
-                                               'grade', 'sub_grade','earliest_cr_line'], drop_first=True)
-    # design matrix
-    X, Y = df_loan[df_loan.columns.difference(['loan_status'])], df_loan['loan_status']
-    X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, stratify=Y)
-    X_test_df = X_test
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, stratify=y_train)
-    # upsampling
-    smote = SMOTE(ratio='minority')
-    X_train, y_train = smote.fit_sample(X_train, y_train)
-    X_val, y_val = smote.fit_sample(X_val, y_val)
-    # features selection
-    randomf = RandomForestClassifier(n_estimators=100, max_depth=None, oob_score=True).fit(X_train, y_train)
-    fs_model = SelectFromModel(randomf, prefit=True)
-    X_train = fs_model.transform(X_train)
-    X_val = fs_model.transform(X_val)
-    X_test = fs_model.transform(X_test)
-    # scaling
-    scaler = StandardScaler().fit(X_train)
-    X_train_scaled = scaler.transform(X_train)
-    X_val_scaled = scaler.transform(X_val)
-    X_test_scaled = scaler.transform(X_test)
-    # pca transform
-    pca_fit = PCA(.9).fit(X_train_scaled)
-    X_train_pca = pca_fit.transform(X_train)
-    X_val_pca = pca_fit.transform(X_val)
-    X_test_pca = pca_fit.transform(X_test)
-    X_train_scaled_pca = pca_fit.transform(X_train_scaled)
-    X_val_scaled_pca = pca_fit.transform(X_val_scaled)
-    X_test_scaled_pca = pca_fit.transform(X_test_scaled)
-    return X_test_df, X_train, y_train, X_val, y_val, X_test, y_test, X_train_scaled, X_val_scaled, X_test_scaled, X_train_scaled_pca, X_val_scaled_pca, X_test_scaled_pca
-```
-
-
-
-
-```python
-X_test_df, X_train, y_train, X_val, y_val, X_test, y_test, X_train_scaled, X_val_scaled, X_test_scaled,X_train_scaled_pca, X_val_scaled_pca, X_test_scaled_pca = get_design_matrices(df_loan_accepted_census_cleaned)
 ```
 
 
@@ -917,10 +795,104 @@ Using the features selected, we will now investigate the performance of several 
 
 At the end we will investigate if ensemble technique via stacking of base learners improves classification results.
 
+### Training Data
+
+For performance reason, we can resample the data and use a smaller volume for training our models. 
+
+There are three versions: the original set, scaled set, scaled set with PCA.
+
+
+
+
+```
+print(" We have {} samples with {} features in our datasets.").format(X_train_new.shape[0], X_train_new.shape[1]))
+```
+
+
+
+
+
+    (90966, 1091)
+
+
+
+
+
+```
+from sklearn.utils import resample
+
+frac = 1
+
+X_train_small, y_train_small = resample(X_train_new, y_train, n_samples=round(y_train.shape[0]*frac))
+X_val_small, y_val_small = resample(X_val_new, y_val, n_samples=round(y_train.shape[0]*frac))
+X_test_small, y_test_small = resample(X_test_new, y_test, n_samples=round(y_train.shape[0]*frac))
+
+
+"""np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_train_upsampled_smote_10.csv', 
+           X_train_small, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_val_upsampled_smote_10.csv', 
+           X_val_small, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_test_upsampled_smote_10.csv', 
+           X_test_small, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_train_upsampled_smote_10.csv', 
+           y_train_small, fmt='%.2f', delimiter=',', header='loan_status')
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_val_upsampled_smote_10.csv', 
+           y_val_small, fmt='%.2f', delimiter=',', header='loan_status')
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_test_upsampled_smote_10.csv', 
+           y_test_small, fmt='%.2f', delimiter=',', header='loan_status')
+"""
+
+X_train_scaled_small, y_train_scaled_small = resample(X_train_scaled, y_train, n_samples=round(y_train.shape[0]*frac))
+X_val_scaled_small, y_val_scaled_small = resample(X_val_scaled, y_val, n_samples=round(y_train.shape[0]*frac))
+X_test_scaled_small, y_test_scaled_small = resample(X_test_scaled, y_test, n_samples=round(y_train.shape[0]*frac))
+
+"""
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_train_scaled_upsampled_smote_10.csv', 
+           X_train_scaled_small, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_val_scaled_upsampled_smote_10.csv', 
+           X_val_scaled_small, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_test_scaled_upsampled_smote_10.csv', 
+           X_test_scaled_small, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_train_scaled_upsampled_smote_10.csv', 
+           y_train_scaled_small, fmt='%.2f', delimiter=',', header='loan_status')
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_val_scaled_upsampled_smote_10.csv', 
+           y_val_scaled_small, fmt='%.2f', delimiter=',', header='loan_status')
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_test_scaled_upsampled_smote_10.csv', 
+           y_test_scaled_small, fmt='%.2f', delimiter=',', header='loan_status')
+"""
+
+X_train_scaled_pca_small, y_train_scaled_pca_small = resample(X_train_scaled_pca, y_train, n_samples=round(y_train.shape[0]*frac))
+X_val_scaled_pca_small, y_val_scaled_pca_small = resample(X_val_scaled_pca, y_val, n_samples=round(y_train.shape[0]*frac))
+X_test_scaled_pca_small, y_test_scaled_pca_small = resample(X_test_scaled_pca, y_test, n_samples=round(y_train.shape[0]*frac))
+
+"""
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_train_scaled_pca_upsampled_smote_10.csv', 
+           X_train_scaled_pca_small, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_val_scaled_pca_upsampled_smote_10.csv', 
+           X_val_scaled_pca_small, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_test_scaled_pca_upsampled_smote_10.csv', 
+           X_test_scaled_pca_small, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_train_scaled_pca_upsampled_smote_10.csv', 
+           y_train_scaled_pca_small, fmt='%.2f', delimiter=',', header='loan_status')
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_val_scaled_pca_upsampled_smote_10.csv', 
+           y_val_scaled_pca_small, fmt='%.2f', delimiter=',', header='loan_status')
+np.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_test_scaled_pca_upsampled_smote_10.csv', 
+           y_test_scaled_pca_small, fmt='%.2f', delimiter=',', header='loan_status')
+"""
+```
+
+
+
+
+
+    "\nnp.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_train_scaled_pca_upsampled_smote_10.csv', \n           X_train_scaled_pca_small, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))\nnp.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_val_scaled_pca_upsampled_smote_10.csv', \n           X_val_scaled_pca_small, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))\nnp.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_X_test_scaled_pca_upsampled_smote_10.csv', \n           X_test_scaled_pca_small, fmt='%.2f', delimiter=',', header=','.join(X.columns.values))\nnp.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_train_scaled_pca_upsampled_smote_10.csv', \n           y_train_scaled_pca_small, fmt='%.2f', delimiter=',', header='loan_status')\nnp.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_val_scaled_pca_upsampled_smote_10.csv', \n           y_val_scaled_pca_small, fmt='%.2f', delimiter=',', header='loan_status')\nnp.savetxt('df_loan_accepted_census_cleaned_closed_2007-2015_y_test_scaled_pca_upsampled_smote_10.csv', \n           y_test_scaled_pca_small, fmt='%.2f', delimiter=',', header='loan_status')\n"
+
+
+
 
 ### Scoring
 
-In classification problems, we can distinguish between the following metrics, whereby **the positive class is Charge Off** and **the negative class is Fully Paid**:
+We will work with the following metrics:
 
 - **Recall or Sensitivity or TPR (True Positive Rate)**: Number of loans correctly identified as positive (fully paid) out of total true positives - TP/(TP+FN)
     
@@ -944,71 +916,54 @@ In classification problems, we can distinguish between the following metrics, wh
 
 **Scoring in investment strategy**
 
-Insights from [8] were used in this section.
+https://medium.com/usf-msds/choosing-the-right-metric-for-evaluating-machine-learning-models-part-2-86d5649a5428
 
 If we choose an investment strategy that uses absolute probabilistic difference, then we will  look at log-loss with care. If the final class prediction is the most important outcome and we don’t want to tune probability threshold, we will rather use AUC score. But if the threshold is well tuned, then F1 will be the scoring to use.
 
-In loan classification, where positive labels (charged-offs) are few, we would like our model to predict positive classes correctly and hence we will sometime prefer those models which are able to classify these positive labels. Log-loss usually fails to identify model which produces too many false negatives because the log-loss function is symmetric and does not differentiate between classes.  Both F1 score and ROC-AUC score can perform well for class imbalance. F1 is better suit for situations where the negative class is small. Since an investor would care more about the minority class (charged-off loans) in number independent of the fact whether it is positive or negative, then **we think that ROC-AUC score would make sense as benchmark measure.**
+In loan classification, where negative labels (charged-offs) are few, we would like our model to predict negative classes correctly and hence we will sometime prefer those models which are able to classify these negative labels. Log-loss usually fails to identify model which produces too many false negatives because the log-loss function is symmetric and does not differentiate between classes.  Both F1 score and ROC-AUC score can perform well for class imbalance. F1 is better suit for situations where the positive class is small. Since an investor would care more about the minority class (charged-off loans) in number independent of the fact whether it is positive or negative, then we think that ROC-AUC score would make sense as benchmark measure.
 
 **Helper functions for scoring metrics**
 
-The source code from [9] was adjusted in the functions below.
 
 
-
-```python
-df_cv_scores = pd.DataFrame({'model':['dummy'], 'accuracy':[0], 'f1':[0], 'roc_auc':[0]}, 
-                            columns=['accuracy','f1','roc_auc'], index=['model'])
-df_cv_scores_pca = df_cv_scores.copy()
-
-df_y_pred_probas = pd.DataFrame() 
-df_y_preds = pd.DataFrame() 
+```
+# dataframe where we track all cross-validation scoring metrics
+df_cv_scores = pd.DataFrame({'model':['dummy'], 'accuracy':[0], 'neg_log_loss':[0], 'f1':[0], 'roc_auc':[0]}, 
+                            columns=['accuracy','neg_log_loss','f1','roc_auc'], index=['model'])
 ```
 
 
 
 
-```python
-def adjust_proba(probs, threshold):
-    return [1 if proba >= threshold else 0 for proba in probs]
+```
+# function for computing 5-fold cross-validation scoring scores
+def predict_evaluate_cv(model, X, y):
+    score_accuracy = cross_val_score(model, X, y, cv=5, scoring='accuracy').mean()
+    score_log_loss = cross_val_score(model, X, y, cv=5, scoring='neg_log_loss').mean()
+    score_f1 = cross_val_score(model, X, y, cv=5, scoring='f1').mean()
+    score_auc = cross_val_score(model, X, y, cv=5, scoring='roc_auc').mean()
+    df_cv_scores.loc[model.__class__.__name__] = [score_accuracy, -score_log_loss, score_f1, score_auc]
+    print('K-fold cross-validation results:')
+    print(model.__class__.__name__+" average accuracy is %2.3f" % score_accuracy)
+    print(model.__class__.__name__+" average log_loss is %2.3f" % -score_log_loss)
+    print(model.__class__.__name__+" average F1 is %2.3f" % score_f1)
+    print(model.__class__.__name__+" average auc is %2.3f" % score_auc)
 ```
 
 
 
 
-```python
-def predict_evaluate_cv(model, X, y, df_cv_scores):
-    cv = StratifiedKFold(n_splits=3, random_state=9999) 
-    score_accuracy = cross_val_score(model, X, y, cv=cv, scoring='accuracy').mean()
-    score_f1 = cross_val_score(model, X, y, cv=cv, scoring='f1').mean()
-    score_auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
-    df_cv_scores.loc[model.__class__.__name__] = [score_accuracy, score_f1, score_auc]
-    print('K-fold cross-validation results on validation set:')
-    print(" average accuracy is {0:0.2%}".format(score_accuracy))
-    print(" average F1 is {0:0.2%}".format(score_f1))
-    print(" average roc_auc is {0:0.2%}".format(score_auc))
 ```
-
-
-
-
-```python
-def predict_evaluate_cm(model, X, y, threshold=.5):
-    model_name = model.__class__.__name__
+# function for computing the confusion matrix
+def predict_evaluate_cm(model, X, y):
     classes = ['Fully Paid', 'Charged-Off']
-    y_true = y
-    if model_name == 'SVC':
-        y_pred_proba = model.decision_function(X)
-    else:
-        y_pred_proba = model.predict_proba(X)[:, 1]
-    df_y_pred_probas[model_name] = y_pred_proba
-    y_pred = adjust_proba(y_pred_proba, threshold)
+    y_true, y_pred = y, model.predict(X)
     cm = confusion_matrix(y_true, y_pred)
-    cm = cm.astype('float')
+    cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
     np.set_printoptions(precision=2)
     plt.figure(figsize=(5,5))
     plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-    plt.title('Confusion matrix')
+    plt.title('Normalized confusion matrix')
     plt.colorbar()
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks, classes, rotation=45)
@@ -1019,31 +974,27 @@ def predict_evaluate_cm(model, X, y, threshold=.5):
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         plt.text(j, i, format(cm[i, j], fmt),
                  horizontalalignment="center",
-                 color="gray" if cm[i, j] > thresh else "black")
+                 color="white" if cm[i, j] > thresh else "black")
 
     plt.tight_layout()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    plt.grid(False)
-    plt.rcParams["axes.edgecolor"] = "0.85"
     plt.show()
+    #print(classification_report(y,y_pred))
 ```
 
 
 
 
-```python
-def predict_evaluate_roc(model, X, y, threshold=.5):
+```
+# function for compution the roc plot
+def predict_evaluate_roc(model, X, y):
+    # source https://www.kaggle.com/mnassrib/titanic-logistic-regression-with-python
     y_pred = model.predict(X)
-    model_name = model.__class__.__name__
-    df_y_preds[model_name] = y_pred
-    if model_name == 'SVC':
-        y_pred_proba = model.decision_function(X)
-    else:
-        y_pred_proba = model.predict_proba(X)[:, 1]
+    y_pred_proba = model.predict_proba(X)[:, 1]
     [fpr, tpr, thr] = roc_curve(y, y_pred_proba)
 
-    idx = np.min(np.where(tpr > threshold))
+    idx = np.min(np.where(tpr > 0.95))
     plt.figure()
     plt.plot(fpr, tpr, color='coral', label='ROC curve (area = %0.3f)' % auc(fpr, tpr))
     plt.plot([0, 1], [0, 1], 'k--')
@@ -1053,7 +1004,7 @@ def predict_evaluate_roc(model, X, y, threshold=.5):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate (1 - specificity)', fontsize=14)
     plt.ylabel('True Positive Rate (recall)', fontsize=14)
-    plt.title('Receiver operating characteristic (ROC) curve - {}'.format(model_name))
+    plt.title('Receiver operating characteristic (ROC) curve')
     plt.legend(loc="lower right")
     plt.show()
 
@@ -1065,52 +1016,17 @@ def predict_evaluate_roc(model, X, y, threshold=.5):
 
 
 
-```python
-def fit_predict_evaluate(model, Xtrain, ytrain, Xval, yval, df_cv_scores):
+```
+# global function for fitting, cross-validating and evaluating a given classifier
+def fit_predict_evaluate(model, Xtrain, ytrain, Xval, yval):
     model.fit(Xtrain, ytrain)
     print(model.__class__.__name__+":")
-    print('Accuracy score on training set is {0:0.2%}'.format(model.score(Xtrain, ytrain)))
-    predict_evaluate_cv(model, Xval, yval, df_cv_scores)
+    print('Accuracy, Training Set: {0:0.2%}'.format(model.score(Xtrain, ytrain)))
+    predict_evaluate_cv(model, Xval, yval)
     predict_evaluate_cm(model, Xval, yval)
     predict_evaluate_roc(model, Xval, yval)
-    return model
 ```
 
-
-## Decision Tree
-
-
-
-```python
-dt_model = DecisionTreeClassifier(max_depth = None)
-```
-
-
-
-
-```python
-dt_model = fit_predict_evaluate(dt_model, X_train, y_train, X_val, y_val, df_cv_scores)
-```
-
-
-    DecisionTreeClassifier:
-    Accuracy score on training set is 100.00%
-    K-fold cross-validation results on validation set:
-     average accuracy is 79.49%
-     average F1 is 77.79%
-     average roc_auc is 79.27%
-    
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_113_1.png)
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_113_2.png)
-
-
-    Using a threshold of 1.000 guarantees a sensitivity of 0.774 and a specificity of 0.791, i.e. a false positive rate of 20.87%.
-    
 
 ## Logistic Regression
 
@@ -1118,7 +1034,7 @@ We will start with a simple logistic regression model for predicting loan charge
 
 
 
-```python
+```
 log_reg = LogisticRegressionCV(
         Cs=list(np.power(10.0, np.arange(-10, 10)))
         ,penalty='l2'
@@ -1135,68 +1051,77 @@ log_reg = LogisticRegressionCV(
 
 
 
-```python
-log_reg = fit_predict_evaluate(log_reg, X_train_scaled, y_train, X_val_scaled, y_val, df_cv_scores)
+```
+fit_predict_evaluate(log_reg, X_train_scaled_small, y_train_scaled_small, X_val_scaled_small, y_val_scaled_small)
 ```
 
 
     LogisticRegressionCV:
-    Accuracy score on training set is 75.64%
-    
-
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\linear_model\logistic.py:1917: ChangedBehaviorWarning: The long-standing behavior to use the accuracy score has changed. The scoring parameter is now used. This warning will disappear in version 0.22.
-      ChangedBehaviorWarning)
-    
-
-    K-fold cross-validation results on validation set:
-     average accuracy is 70.61%
-     average F1 is 71.00%
-     average roc_auc is 77.59%
+    Accuracy, Training Set: 67.51%
+    K-fold cross-validation results:
+    LogisticRegressionCV average accuracy is 0.816
+    LogisticRegressionCV average log_loss is 0.433
+    LogisticRegressionCV average F1 is 0.897
+    LogisticRegressionCV average auc is 0.723
     
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_116_3.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_105_1.png)
 
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_116_4.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_105_2.png)
 
 
-    Using a threshold of 0.591 guarantees a sensitivity of 0.503 and a specificity of 0.783, i.e. a false positive rate of 21.74%.
+    Using a threshold of 0.227 guarantees a sensitivity of 0.950 and a specificity of 0.188, i.e. a false positive rate of 81.16%.
     
+
+AUC is 0.80, there is 80% of chance that the logistic regression model will be able to distinguish between fully paid loans and charged-off loans.
 
 **Logistic Regression with PCA**
 
 
 
-```python
-log_reg_pca = fit_predict_evaluate(log_reg, X_train_scaled_pca, y_train, X_val_scaled_pca, y_val, df_cv_scores_pca)
+```
+fit_predict_evaluate(log_reg, X_train_scaled_pca_small, y_train_scaled_pca_small, X_val_scaled_pca_small, y_val_scaled_pca_small)
 ```
 
 
     LogisticRegressionCV:
-    Accuracy score on training set is 74.17%
+    Accuracy, Training Set: 71.32%
     
 
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\linear_model\logistic.py:1917: ChangedBehaviorWarning: The long-standing behavior to use the accuracy score has changed. The scoring parameter is now used. This warning will disappear in version 0.22.
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/linear_model/logistic.py:1920: ChangedBehaviorWarning: The long-standing behavior to use the accuracy score has changed. The scoring parameter is now used. This warning will disappear in version 0.22.
       ChangedBehaviorWarning)
     
 
-    K-fold cross-validation results on validation set:
-     average accuracy is 69.91%
-     average F1 is 69.70%
-     average roc_auc is 75.58%
+    K-fold cross-validation results:
+    LogisticRegressionCV average accuracy is 0.812
+    LogisticRegressionCV average log_loss is 0.444
+    LogisticRegressionCV average F1 is 0.896
+    LogisticRegressionCV average auc is 0.701
     
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_118_3.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_108_3.png)
 
 
+                  precision    recall  f1-score   support
+    
+               0       0.30      0.66      0.41     17137
+               1       0.89      0.64      0.75     74046
+    
+       micro avg       0.65      0.65      0.65     91183
+       macro avg       0.59      0.65      0.58     91183
+    weighted avg       0.78      0.65      0.68     91183
+    
+    
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_118_4.png)
+
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_108_5.png)
 
 
-    Using a threshold of 0.582 guarantees a sensitivity of 0.502 and a specificity of 0.790, i.e. a false positive rate of 21.04%.
+    Using a threshold of 0.252 guarantees a sensitivity of 0.950 and a specificity of 0.159, i.e. a false positive rate of 84.07%.
     
 
 PCA causes a decrease in average AUC.
@@ -1207,35 +1132,36 @@ We will now rebuilt our random forest classifier, this time using the important 
 
 
 
-```python
-randomf_optim = RandomForestClassifier(n_estimators=200, max_depth=20)
+```
+randomf_optim = RandomForestClassifier(n_estimators=200, max_depth=30)
 ```
 
 
 
 
-```python
-randomf_optim = fit_predict_evaluate(randomf_optim, X_train, y_train, X_val, y_val, df_cv_scores)
+```
+fit_predict_evaluate(randomf_optim, X_train_small, y_train_small, X_val_small, y_val_small)
 ```
 
 
     RandomForestClassifier:
-    Accuracy score on training set is 99.99%
-    K-fold cross-validation results on validation set:
-     average accuracy is 86.93%
-     average F1 is 82.48%
-     average roc_auc is 96.08%
+    Accuracy, Training Set: 100.00%
+    K-fold cross-validation results:
+    RandomForestClassifier average accuracy is 0.999
+    RandomForestClassifier average log_loss is 0.015
+    RandomForestClassifier average F1 is 0.999
+    RandomForestClassifier average auc is 1.000
     
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_122_1.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_112_1.png)
 
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_122_2.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_112_2.png)
 
 
-    Using a threshold of 0.773 guarantees a sensitivity of 0.564 and a specificity of 1.000, i.e. a false positive rate of 0.00%.
+    Using a threshold of 0.565 guarantees a sensitivity of 0.951 and a specificity of 0.178, i.e. a false positive rate of 82.18%.
     
 
 The random forest classifier gives the best accuracy so far.
@@ -1246,45 +1172,30 @@ In this section, we try the boosting technique for loan default prediction.
 
 
 
-```python
+```
 ab_model = AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=7), n_estimators=60, learning_rate=0.05)
 ```
 
 
 
 
-```python
-ab_model = fit_predict_evaluate(ab_model, X_train, y_train, X_val, y_val, df_cv_scores)
+```
+fit_predict_evaluate(ab_model, X_train_small, y_train_small, X_val_small, y_val_small)
 ```
 
 
     AdaBoostClassifier:
-    Accuracy score on training set is 97.03%
-    K-fold cross-validation results on validation set:
-     average accuracy is 82.36%
-     average F1 is 77.94%
-     average roc_auc is 86.92%
-    
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_126_1.png)
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_126_2.png)
-
-
-    Using a threshold of 0.961 guarantees a sensitivity of 0.512 and a specificity of 0.998, i.e. a false positive rate of 0.17%.
+    Accuracy, Training Set: 90.78%
     
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,2,figsize=(20,5))
 train_scores = list(ab_model.staged_score(X_train,y_train))
-test_scores = list(ab_model.staged_score(X_val, y_val))
-ax[0].plot(train_scores,label='depth-{}'.format(7))
-ax[1].plot(test_scores,label='depth-{}'.format(7))
+test_scores = list(ab_model.staged_score(X_test, y_test))
+ax[0].plot(train_scores,label='depth-{}'.format(depth))
+ax[1].plot(test_scores,label='depth-{}'.format(depth))
 ax[0].set_xlabel('number of iterations', fontsize=12)
 ax[1].set_xlabel('number of iterations', fontsize=12)
 ax[0].set_ylabel('Accuracy', fontsize=12)
@@ -1295,19 +1206,15 @@ ax[1].legend(fontsize=12);
 ```
 
 
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_127_0.png)
-
-
 ### XG Boosting
 
 
 
-```python
-xgb_model = XGBClassifier(learningrate =0.05, nestimators=100,
+```
+xgb_model = XGBClassifier(learningrate =0.01, nestimators=100,
                     maxdepth=4, minchildweight=4, subsample=0.8, colsamplebytree=0.8,
                     objective= 'binary:logistic',
-                    nthread=3,
+                    nthread=4,
                     scaleposweight=2,
                     seed=27)
 ```
@@ -1315,78 +1222,198 @@ xgb_model = XGBClassifier(learningrate =0.05, nestimators=100,
 
 
 
-```python
-xgb_model = fit_predict_evaluate(xgb_model, X_train, y_train, X_val, y_val, df_cv_scores)
+```
+fit_predict_evaluate(xgb_model, X_train_small, y_train_small, X_val_small, y_val_small)
 ```
 
 
     XGBClassifier:
-    Accuracy score on training set is 89.26%
-    K-fold cross-validation results on validation set:
-     average accuracy is 83.75%
-     average F1 is 78.04%
-     average roc_auc is 93.49%
+    Accuracy, Training Set: 88.29%
+    K-fold cross-validation results:
+    XGBClassifier average accuracy is 0.813
+    XGBClassifier average log_loss is 0.438
+    XGBClassifier average F1 is 0.896
+    XGBClassifier average auc is 0.717
     
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_130_1.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_120_1.png)
 
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_130_2.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_120_2.png)
 
 
-    Using a threshold of 0.964 guarantees a sensitivity of 0.503 and a specificity of 1.000, i.e. a false positive rate of 0.00%.
+    Using a threshold of 0.559 guarantees a sensitivity of 0.950 and a specificity of 0.180, i.e. a false positive rate of 81.98%.
     
 
 ## SVM
 
 
 
-```python
+```
 svm_model = SVC(gamma=0.1, C=0.01, kernel="linear")
 ```
 
 
 
 
-```python
-svm_model = fit_predict_evaluate(svm_model, X_train_scaled_pca, y_train, X_val_scaled_pca, y_val, df_cv_scores)
+```
+fit_predict_evaluate(svm_model, X_train_scaled_small, y_train_scaled_small, X_val_scaled_small, y_val_scaled_small)
 ```
 
 
     SVC:
-    Accuracy score on training set is 67.31%
-    K-fold cross-validation results on validation set:
-     average accuracy is 69.74%
-     average F1 is 69.29%
-     average roc_auc is 75.48%
+    Accuracy, Training Set: 66.88%
     
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_133_1.png)
+    ---------------------------------------------------------------------------
 
+    AttributeError                            Traceback (most recent call last)
 
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_133_2.png)
-
-
-    Using a threshold of 0.435 guarantees a sensitivity of 0.502 and a specificity of 0.784, i.e. a false positive rate of 21.57%.
+    <ipython-input-285-f0d34d722ab7> in <module>()
+    ----> 1 fit_predict_evaluate(svm_model, X_train_scaled_small, y_train_scaled_small, X_val_scaled_small, y_val_scaled_small)
     
 
-
-
-```python
-predict_evaluate_roc(svm_model, X_val_scaled_pca, y_val)
-```
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_134_0.png)
-
-
-    Using a threshold of 0.435 guarantees a sensitivity of 0.502 and a specificity of 0.784, i.e. a false positive rate of 21.57%.
+    <ipython-input-129-650159ccd3b5> in fit_predict_evaluate(model, Xtrain, ytrain, Xval, yval)
+          3     print(model.__class__.__name__+":")
+          4     print('Accuracy, Training Set: {0:0.2%}'.format(model.score(Xtrain, ytrain)))
+    ----> 5     predict_evaluate_cv(model, Xval, yval)
+          6     predict_evaluate_cm(model, Xval, yval)
+          7     predict_evaluate_roc(model, Xval, yval)
     
+
+    <ipython-input-133-dd2446e28dbe> in predict_evaluate_cv(model, X, y)
+          1 def predict_evaluate_cv(model, X, y):
+          2     score_accuracy = cross_val_score(model, X, y, cv=5, scoring='accuracy').mean()
+    ----> 3     score_log_loss = cross_val_score(model, X, y, cv=5, scoring='neg_log_loss').mean()
+          4     score_f1 = cross_val_score(model, X, y, cv=5, scoring='f1').mean()
+          5     score_auc = cross_val_score(model, X, y, cv=5, scoring='roc_auc').mean()
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/model_selection/_validation.py in cross_val_score(estimator, X, y, groups, scoring, cv, n_jobs, verbose, fit_params, pre_dispatch, error_score)
+        400                                 fit_params=fit_params,
+        401                                 pre_dispatch=pre_dispatch,
+    --> 402                                 error_score=error_score)
+        403     return cv_results['test_score']
+        404 
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/model_selection/_validation.py in cross_validate(estimator, X, y, groups, scoring, cv, n_jobs, verbose, fit_params, pre_dispatch, return_train_score, return_estimator, error_score)
+        238             return_times=True, return_estimator=return_estimator,
+        239             error_score=error_score)
+    --> 240         for train, test in cv.split(X, y, groups))
+        241 
+        242     zipped_scores = list(zip(*scores))
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/externals/joblib/parallel.py in __call__(self, iterable)
+        915             # remaining jobs.
+        916             self._iterating = False
+    --> 917             if self.dispatch_one_batch(iterator):
+        918                 self._iterating = self._original_iterator is not None
+        919 
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/externals/joblib/parallel.py in dispatch_one_batch(self, iterator)
+        757                 return False
+        758             else:
+    --> 759                 self._dispatch(tasks)
+        760                 return True
+        761 
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/externals/joblib/parallel.py in _dispatch(self, batch)
+        714         with self._lock:
+        715             job_idx = len(self._jobs)
+    --> 716             job = self._backend.apply_async(batch, callback=cb)
+        717             # A job can complete so quickly than its callback is
+        718             # called before we get here, causing self._jobs to
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/externals/joblib/_parallel_backends.py in apply_async(self, func, callback)
+        180     def apply_async(self, func, callback=None):
+        181         """Schedule a func to be run"""
+    --> 182         result = ImmediateResult(func)
+        183         if callback:
+        184             callback(result)
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/externals/joblib/_parallel_backends.py in __init__(self, batch)
+        547         # Don't delay the application, to avoid keeping the input
+        548         # arguments in memory
+    --> 549         self.results = batch()
+        550 
+        551     def get(self):
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/externals/joblib/parallel.py in __call__(self)
+        223         with parallel_backend(self._backend, n_jobs=self._n_jobs):
+        224             return [func(*args, **kwargs)
+    --> 225                     for func, args, kwargs in self.items]
+        226 
+        227     def __len__(self):
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/externals/joblib/parallel.py in <listcomp>(.0)
+        223         with parallel_backend(self._backend, n_jobs=self._n_jobs):
+        224             return [func(*args, **kwargs)
+    --> 225                     for func, args, kwargs in self.items]
+        226 
+        227     def __len__(self):
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/model_selection/_validation.py in _fit_and_score(estimator, X, y, scorer, train, test, verbose, parameters, fit_params, return_train_score, return_parameters, return_n_test_samples, return_times, return_estimator, error_score)
+        566         fit_time = time.time() - start_time
+        567         # _score will return dict if is_multimetric is True
+    --> 568         test_scores = _score(estimator, X_test, y_test, scorer, is_multimetric)
+        569         score_time = time.time() - start_time - fit_time
+        570         if return_train_score:
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/model_selection/_validation.py in _score(estimator, X_test, y_test, scorer, is_multimetric)
+        603     """
+        604     if is_multimetric:
+    --> 605         return _multimetric_score(estimator, X_test, y_test, scorer)
+        606     else:
+        607         if y_test is None:
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/model_selection/_validation.py in _multimetric_score(estimator, X_test, y_test, scorers)
+        633             score = scorer(estimator, X_test)
+        634         else:
+    --> 635             score = scorer(estimator, X_test, y_test)
+        636 
+        637         if hasattr(score, 'item'):
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/metrics/scorer.py in __call__(self, clf, X, y, sample_weight)
+        125         """
+        126         y_type = type_of_target(y)
+    --> 127         y_pred = clf.predict_proba(X)
+        128         if y_type == "binary":
+        129             if y_pred.shape[1] == 2:
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/svm/base.py in predict_proba(self)
+        607         datasets.
+        608         """
+    --> 609         self._check_proba()
+        610         return self._predict_proba
+        611 
+    
+
+    ~/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/svm/base.py in _check_proba(self)
+        574     def _check_proba(self):
+        575         if not self.probability:
+    --> 576             raise AttributeError("predict_proba is not available when "
+        577                                  " probability=False")
+        578         if self._impl not in ('c_svc', 'nu_svc'):
+    
+
+    AttributeError: predict_proba is not available when  probability=False
+
 
 ## QDA
 
@@ -1394,247 +1421,66 @@ In this section we try a QDA model.
 
 
 
-```python
+```
 qda_model = QuadraticDiscriminantAnalysis()
 ```
 
 
 
 
-```python
-qda_model = fit_predict_evaluate(qda_model, X_train_scaled, y_train, X_val_scaled, y_val, df_cv_scores)
 ```
-
-
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    
-
-    QuadraticDiscriminantAnalysis:
-    Accuracy score on training set is 71.36%
-    
-
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\ProgramData\Anaconda3\lib\site-packages\sklearn\discriminant_analysis.py:686: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    
-
-    K-fold cross-validation results on validation set:
-     average accuracy is 76.27%
-     average F1 is 76.20%
-     average roc_auc is 81.81%
-    
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_137_4.png)
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_137_5.png)
-
-
-    Using a threshold of 0.994 guarantees a sensitivity of 0.501 and a specificity of 0.773, i.e. a false positive rate of 22.70%.
-    
-
-
-
-```python
-qda_model_pca = fit_predict_evaluate(qda_model, X_train_scaled_pca, y_train, X_val_scaled_pca, y_val, df_cv_scores_pca)
+fit_predict_evaluate(qda_model, X_train_scaled_small, y_train_scaled_small, X_val_scaled_small, y_val_scaled_small)
 ```
 
 
     QuadraticDiscriminantAnalysis:
-    Accuracy score on training set is 70.97%
-    K-fold cross-validation results on validation set:
-     average accuracy is 77.39%
-     average F1 is 76.91%
-     average roc_auc is 82.51%
+    Accuracy, Training Set: 65.52%
+    K-fold cross-validation results:
+    QuadraticDiscriminantAnalysis average accuracy is 0.658
+    QuadraticDiscriminantAnalysis average log_loss is 1.383
+    QuadraticDiscriminantAnalysis average F1 is 0.760
+    QuadraticDiscriminantAnalysis average auc is 0.679
     
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_138_1.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_126_1.png)
 
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_138_2.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_126_2.png)
 
 
-    Using a threshold of 0.964 guarantees a sensitivity of 0.503 and a specificity of 0.796, i.e. a false positive rate of 20.43%.
+    Using a threshold of 0.000 guarantees a sensitivity of 0.950 and a specificity of 0.131, i.e. a false positive rate of 86.87%.
     
 
 ## KNN
 
 
 
-```python
-knn_model = KNeighborsClassifier(n_neighbors=3, n_jobs=-1)
+```
+knn_model = KNeighborsClassifier(n_neighbors=3)
 ```
 
 
 
 
-```python
-knn_model = fit_predict_evaluate(knn_model, X_train_scaled, y_train, X_val_scaled, y_val, df_cv_scores)
+```
+fit_predict_evaluate(knn_model, X_train_scaled_small, y_train_scaled_small, X_val_scaled_small, y_val_scaled_small)
 ```
 
-
-    KNeighborsClassifier:
-    Accuracy score on training set is 91.29%
-    K-fold cross-validation results on validation set:
-     average accuracy is 77.44%
-     average F1 is 81.20%
-     average roc_auc is 87.14%
-    
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_141_1.png)
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_141_2.png)
-
-
-    Using a threshold of 0.667 guarantees a sensitivity of 0.626 and a specificity of 0.689, i.e. a false positive rate of 31.13%.
-    
-
-
-
-```python
-knn_model_pca = fit_predict_evaluate(knn_model, X_train_scaled_pca, y_train, X_val_scaled_pca, y_val, df_cv_scores_pca)
-```
-
-
-    KNeighborsClassifier:
-    Accuracy score on training set is 92.05%
-    K-fold cross-validation results on validation set:
-     average accuracy is 78.00%
-     average F1 is 81.40%
-     average roc_auc is 87.91%
-    
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_142_1.png)
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_142_2.png)
-
-
-    Using a threshold of 0.667 guarantees a sensitivity of 0.553 and a specificity of 0.703, i.e. a false positive rate of 29.74%.
-    
-
-## Multilayer Perceptron
-
-
-
-```python
-mlp_model = MLPClassifier(hidden_layer_sizes=(50), batch_size=50, learning_rate='constant', learning_rate_init=0.0005, early_stopping=True)
-```
-
-
-
-
-```python
-mlp_model = fit_predict_evaluate(mlp_model, X_train_scaled, y_train, X_val_scaled, y_val, df_cv_scores)
-```
-
-
-    MLPClassifier:
-    Accuracy score on training set is 94.83%
-    K-fold cross-validation results on validation set:
-     average accuracy is 82.70%
-     average F1 is 82.66%
-     average roc_auc is 82.35%
-    
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_145_1.png)
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_145_2.png)
-
-
-    Using a threshold of 0.608 guarantees a sensitivity of 0.502 and a specificity of 0.865, i.e. a false positive rate of 13.48%.
-    
-
-
-
-```python
-mlp_model_pca = fit_predict_evaluate(mlp_model, X_train_scaled_pca, y_train, X_val_scaled_pca, y_val, df_cv_scores_pca)
-```
-
-
-    MLPClassifier:
-    Accuracy score on training set is 89.51%
-    K-fold cross-validation results on validation set:
-     average accuracy is 76.43%
-     average F1 is 81.07%
-     average roc_auc is 80.23%
-    
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_146_1.png)
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_146_2.png)
-
-
-    Using a threshold of 0.581 guarantees a sensitivity of 0.502 and a specificity of 0.841, i.e. a false positive rate of 15.91%.
-    
 
 ## Loan Description
 
-Some studies [10] suggest that words used on loan applications can predict the likelihood of charge-off.
+https://www.thecut.com/2017/05/what-the-words-you-use-in-a-loan-application-reveal.html
+
+Some studies suggest that words used on loan applications can predict the likelihood of charge-off.
 In this section we use natural language processing algorithms to extract features from the loan title and description filled in by the borrower when requesting the loan. We then use a Naive Bayes classifier and a random forest for this task.
 
-The function below performs the following preprocessingon the text data:
-
-- lower case
-- remove punctuation
-- remove commonly occuring words using predefined libraries
-- remove suffices, like “ing”, “ly”, “s”, etc. by a simple rule-based approach
 
 
-
-```python
+```
 def clean_text(text):
+    #https://www.analyticsvidhya.com/blog/2018/02/the-different-methods-deal-text-data-predictive-python/
     # lower case
     text = text.apply(lambda x: " ".join(x.lower() for x in x.split()))
     # remove punctuation
@@ -1651,43 +1497,36 @@ def clean_text(text):
 ```
 
 
-We first prepare the data.
 
 
+```
+#>>> import nltk
+#>>> nltk.download('wordnet')
+#>>> nltk.download('stopwords')
 
-```python
 df_desc = df_loan_accepted_census_cleaned.copy()
 df_desc = df_desc[['title', 'desc', 'loan_status']]
 df_desc.fillna('N/A', inplace=True)
 df_desc['desc'] = df_desc['desc'] + ' - ' + df_desc['title']
 df_desc = df_desc[df_desc.loan_status.isin(['Charged Off', 'Fully Paid'])]
 df_desc.replace({'loan_status':{'Charged Off': 0, 'Fully Paid': 1}}, inplace=True)
+df_desc.loan_status = df_desc.loan_status.astype('int')
+df_desc.desc = clean_text(df_desc.desc).str.replace('na','')
 ```
 
 
-The feature is the merged loan title and description, the response variable is the loan status.
 
 
-
-```python
+```
 X_desc = df_desc.title
 y_desc = df_desc.loan_status
-#X_train_desc, X_test_desc, y_train_desc, y_test_desc = train_test_split(X_desc, y_desc, test_size= 0.2, random_state=13)
-X_train_desc, X_test_desc, y_train_desc, y_test_desc = train_test_split(X_desc, y_desc, test_size=0.1, stratify=y_desc)
-X_train_desc, X_val_desc, y_train_desc, y_val_desc = train_test_split(X_train_desc, y_train_desc, test_size=0.2, stratify=y_train_desc)
-
-X_train_desc, y_train_desc = resample(X_train_desc, y_train_desc, n_samples=round(y_train.shape[0]))
-X_val_desc, y_val_desc = resample(X_val_desc, y_val_desc, n_samples=round(y_val.shape[0]))
-X_test_desc, y_test_desc = resample(X_test_desc, y_test_desc, n_samples=round(y_test.shape[0]))
-
+X_train_desc, X_test_desc, y_train_desc, y_test_desc = train_test_split(X_desc, y_desc, test_size= 0.2, random_state=13)
 ```
 
 
-We extract TF-IDF features. TF-IDF is the multiplication of the TF and IDF.  The IDF of each word is the log of the ratio of the total number of rows to the number of rows in which that word is present.The TF or term frequency is the ratio of the count of a word present in a sentence, to the length of the sentence.
 
 
-
-```python
+```
 word_vectorizer = TfidfVectorizer(
     stop_words='english',
     sublinear_tf=True,
@@ -1697,84 +1536,253 @@ word_vectorizer = TfidfVectorizer(
     ngram_range=(1, 1),
     max_features=30000)
 
+# fit and transform on it the training features
 word_vectorizer.fit(X_train_desc)
 X_train_desc_features = word_vectorizer.transform(X_train_desc)
 
-#transform the val and test features to sparse matrix
-X_val_desc_features = word_vectorizer.transform(X_val_desc)
+#transform the test features to sparse matrix
 X_test_desc_features = word_vectorizer.transform(X_test_desc)
 ```
 
 
 
 
-```python
-print("Our training data has {} loans, each with {} text features.".format(X_train_desc_features.shape[0], 
-                                                                           X_train_desc_features.shape[1]))
 ```
-
-
-    Our training data has 9196 loans, each with 486 text features.
-    
-
-**Naive Bayes**
-
-The multinomial Naive Bayes classifier is suitable for classification with discrete features and fractional counts such as tf-idf.
-
-
-
-```python
-nb_model = MultinomialNB()
+X_test_desc_features.shape
 ```
 
 
 
 
-```python
-nb_model = fit_predict_evaluate(nb_model, X_train_desc_features, y_train_desc, X_val_desc_features, y_val_desc, df_cv_scores)
+
+    (155992, 13704)
+
+
+
+
+
+```
+from sklearn.naive_bayes import MultinomialNB
+clf = MultinomialNB()
+```
+
+
+
+
+```
+fit_predict_evaluate(clf, X_train_desc_features, y_train_desc, X_test_desc_features, y_test_desc)
 ```
 
 
     MultinomialNB:
-    Accuracy score on training set is 82.63%
-    K-fold cross-validation results on validation set:
-     average accuracy is 81.17%
-     average F1 is 89.58%
-     average roc_auc is 52.58%
+    Accuracy, Training Set: 81.38%
+    K-fold cross-validation results:
+    MultinomialNB average accuracy is 0.811
+    MultinomialNB average log_loss is 0.493
+    MultinomialNB average F1 is 0.896
+    MultinomialNB average auc is 0.534
     
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_159_1.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_138_1.png)
 
 
 
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_159_2.png)
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_138_2.png)
 
 
-    Using a threshold of 0.827 guarantees a sensitivity of 0.792 and a specificity of 0.106, i.e. a false positive rate of 89.35%.
+    Using a threshold of 0.798 guarantees a sensitivity of 0.958 and a specificity of 0.047, i.e. a false positive rate of 95.32%.
+    
+
+
+
+```
+rf_desc = RandomForestClassifier(n_estimators=200, max_depth=15, random_state=0)
+fit_predict_evaluate(rf_desc, X_train_desc_features, y_train_desc, X_test_desc_features, y_test_desc)
+```
+
+
+    RandomForestClassifier:
+    Accuracy, Training Set: 81.17%
+    K-fold cross-validation results:
+    RandomForestClassifier average accuracy is 0.812
+    RandomForestClassifier average log_loss is 0.482
+    RandomForestClassifier average F1 is 0.896
+    RandomForestClassifier average auc is 0.543
+    
+
+
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_139_1.png)
+
+
+
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_139_2.png)
+
+
+    Using a threshold of 0.805 guarantees a sensitivity of 0.991 and a specificity of 0.014, i.e. a false positive rate of 98.56%.
     
 
 Both Naive Bayes and random forest did not find enough information that would clearly distinguish the two classes of loans.
 
-## Model Selection
+## Stacking
 
-### Scoring benchmark
+We should consider stacking all the models obtained for achieving better prediction accuracy.
 
-All models investigated in this project are compared in the table below. The performance was evaluated in a out-of-sample manner on the validation set using 3-folds cross-validation.
-
-For each model, we can compare different metrics (accuracy, F1, ROC_AUC). We are also able to compare models using the metric ROC_AUC, which reflect their performance when we set probability cutoff at 50%. 
-
-The scoring results is summarised below.
+We begin with this simple approach of averaging base models. 
 
 
 
-```python
-df_cv_scores_report = df_cv_scores.copy()
-df_cv_scores_report.drop('model', inplace=True, errors='ignore')
-df_cv_scores_report.sort_values(by=['roc_auc'], ascending=False, inplace=True)
-df_cv_scores_report.reset_index(inplace=True)
-df_cv_scores_report.rename(columns={'index':'model'}, inplace=True)
-df_cv_scores_report
+```
+voting_clf = VotingClassifier(estimators=[
+    ('rf', randomf_optim), 
+    ('lr', log_reg),
+    ('qda', qda_model)], voting='soft', flatten_transform=True)
+voting_clf.fit(X_train_scaled, y_train)
+```
+
+
+
+
+
+    VotingClassifier(estimators=[('rf', RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gini',
+                max_depth=30, max_features='auto', max_leaf_nodes=None,
+                min_impurity_decrease=0.0, min_impurity_split=None,
+                min_samples_leaf=1, min_samples_split=2,
+                min_weig...rs=None, reg_param=0.0,
+                   store_covariance=False, store_covariances=None, tol=0.0001))],
+             flatten_transform=True, n_jobs=None, voting='soft', weights=None)
+
+
+
+
+
+```
+fit_predict_evaluate(voting_clf, X_train_scaled_small, y_train_scaled_small, X_val_scaled_small, y_val_scaled_small)
+```
+
+
+It seems even the simplest stacking approach improved the score of our best base learner. This encourages us to go further and explore a less simple stacking approach.
+
+In this approach, we add a meta-model on averaged base models and use the out-of-folds predictions of these base models to train our meta-model. 
+
+
+
+```
+#https://towardsdatascience.com/predicting-loan-repayment-5df4e0023e92
+models = {'rf': randomf_optim, 
+        'lr': log_reg,
+        'qda': qda_model}
+```
+
+
+We previously split the total training set into 5 disjoint folds (4 training and 1 holdout). We train the base models on the training folds and we predict on the holdout fold.
+
+
+
+```
+# Build first stack of base learners
+first_stack = make_pipeline(voting_clf, FunctionTransformer(lambda X: X[:, 1::2]))
+# Use CV to generate meta-features
+meta_features = cross_val_predict(first_stack, X_train_scaled_small, y_train_scaled_small, cv=5, method="transform")
+```
+
+
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/preprocessing/_function_transformer.py:98: FutureWarning: The default validate=True will be replaced by validate=False in 0.22.
+      "validate=False in 0.22.", FutureWarning)
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/preprocessing/_function_transformer.py:98: FutureWarning: The default validate=True will be replaced by validate=False in 0.22.
+      "validate=False in 0.22.", FutureWarning)
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/preprocessing/_function_transformer.py:98: FutureWarning: The default validate=True will be replaced by validate=False in 0.22.
+      "validate=False in 0.22.", FutureWarning)
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/preprocessing/_function_transformer.py:98: FutureWarning: The default validate=True will be replaced by validate=False in 0.22.
+      "validate=False in 0.22.", FutureWarning)
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/preprocessing/_function_transformer.py:98: FutureWarning: The default validate=True will be replaced by validate=False in 0.22.
+      "validate=False in 0.22.", FutureWarning)
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/preprocessing/_function_transformer.py:98: FutureWarning: The default validate=True will be replaced by validate=False in 0.22.
+      "validate=False in 0.22.", FutureWarning)
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/preprocessing/_function_transformer.py:98: FutureWarning: The default validate=True will be replaced by validate=False in 0.22.
+      "validate=False in 0.22.", FutureWarning)
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/preprocessing/_function_transformer.py:98: FutureWarning: The default validate=True will be replaced by validate=False in 0.22.
+      "validate=False in 0.22.", FutureWarning)
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/preprocessing/_function_transformer.py:98: FutureWarning: The default validate=True will be replaced by validate=False in 0.22.
+      "validate=False in 0.22.", FutureWarning)
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/preprocessing/_function_transformer.py:98: FutureWarning: The default validate=True will be replaced by validate=False in 0.22.
+      "validate=False in 0.22.", FutureWarning)
+    
+
+
+
+```
+# Refit the first stack on the full training set
+first_stack.fit(X_train_scaled_small, y_train_scaled_small)
+```
+
+
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/preprocessing/_function_transformer.py:98: FutureWarning: The default validate=True will be replaced by validate=False in 0.22.
+      "validate=False in 0.22.", FutureWarning)
+    
+
+
+
+```
+# Fit the meta learner
+logreg_clf = LogisticRegression(penalty="l2", C=100, fit_intercept=True)
+second_stack = logreg_clf.fit(meta_features, y_train_scaled_small)
+```
+
+
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/linear_model/logistic.py:433: FutureWarning: Default solver will be changed to 'lbfgs' in 0.22. Specify a solver to silence this warning.
+      FutureWarning)
+    
+
+
+
+```
+# Plot ROC and PR curves using all models and test data
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+for name, model in models.items():
+    model_probs = model.predict_proba(X_val_scaled_small)[:, 1:]
+    model_auc_score = roc_auc_score(y_val_scaled_small, model_probs)
+    fpr, tpr, _ = roc_curve(y_val_scaled_small, model_probs)
+    precision, recall, _ = precision_recall_curve(y_val_scaled_small, model_probs)
+    axes[0].plot(fpr, tpr, label=f"{name}, auc = {model_auc_score:.3f}")
+    axes[1].plot(recall, precision, label=f"{name}")
+
+stacked_probs = second_stack.predict_proba(first_stack.transform(X_val_scaled_small))[:, 1:]
+stacked_auc_score = roc_auc_score(y_val_scaled_small, stacked_probs)
+fpr, tpr, _ = roc_curve(y_val_scaled_small, stacked_probs)
+precision, recall, _ = precision_recall_curve(y_val_scaled_small, stacked_probs)
+axes[0].plot(fpr, tpr, label=f"stacked_ensemble, auc = {stacked_auc_score:.3f}")
+axes[1].plot(recall, precision, label="stacked_ensembe")
+axes[0].legend(loc="lower right")
+axes[0].set_xlabel("FPR")
+axes[0].set_ylabel("TPR")
+axes[0].set_title("ROC curve")
+axes[1].legend()
+axes[1].set_xlabel("recall")
+axes[1].set_ylabel("precision")
+axes[1].set_title("PR curve")
+plt.tight_layout()
+```
+
+
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/preprocessing/_function_transformer.py:98: FutureWarning: The default validate=True will be replaced by validate=False in 0.22.
+      "validate=False in 0.22.", FutureWarning)
+    
+
+
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_151_1.png)
+
+
+Stacking did not improve the accuracy of our three base learners.
+
+## Models Benchmark
+
+All models investigated in this project are compared in the table below. The performance was achieved on the validation set using 5-fold cross-validation.
+
+
+
+```
+df_cv_scores
 ```
 
 
@@ -1799,82 +1807,54 @@ df_cv_scores_report
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>model</th>
       <th>accuracy</th>
+      <th>neg_log_loss</th>
       <th>f1</th>
       <th>roc_auc</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <th>0</th>
-      <td>RandomForestClassifier</td>
-      <td>0.869274</td>
-      <td>0.824770</td>
-      <td>0.960844</td>
+      <th>model</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
     </tr>
     <tr>
-      <th>1</th>
-      <td>XGBClassifier</td>
-      <td>0.837549</td>
-      <td>0.780405</td>
-      <td>0.934857</td>
+      <th>LogisticRegressionCV</th>
+      <td>0.812312</td>
+      <td>-0.442843</td>
+      <td>0.894996</td>
+      <td>0.708746</td>
     </tr>
     <tr>
-      <th>2</th>
-      <td>KNeighborsClassifier</td>
-      <td>0.774367</td>
-      <td>0.811972</td>
-      <td>0.871413</td>
+      <th>QuadraticDiscriminantAnalysis</th>
+      <td>0.657611</td>
+      <td>1.382761</td>
+      <td>0.759832</td>
+      <td>0.678648</td>
     </tr>
     <tr>
-      <th>3</th>
-      <td>AdaBoostClassifier</td>
-      <td>0.823590</td>
-      <td>0.779372</td>
-      <td>0.869230</td>
+      <th>XGBClassifier</th>
+      <td>0.813156</td>
+      <td>0.438469</td>
+      <td>0.895662</td>
+      <td>0.717397</td>
     </tr>
     <tr>
-      <th>4</th>
-      <td>MLPClassifier</td>
-      <td>0.826969</td>
-      <td>0.826579</td>
-      <td>0.823542</td>
+      <th>MultinomialNB</th>
+      <td>0.810913</td>
+      <td>0.492669</td>
+      <td>0.895557</td>
+      <td>0.533533</td>
     </tr>
     <tr>
-      <th>5</th>
-      <td>QuadraticDiscriminantAnalysis</td>
-      <td>0.762653</td>
-      <td>0.762036</td>
-      <td>0.818101</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>DecisionTreeClassifier</td>
-      <td>0.794878</td>
-      <td>0.777887</td>
-      <td>0.792702</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>LogisticRegressionCV</td>
-      <td>0.706087</td>
-      <td>0.710025</td>
-      <td>0.775881</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>SVC</td>
-      <td>0.697378</td>
-      <td>0.692917</td>
-      <td>0.754782</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>MultinomialNB</td>
-      <td>0.811739</td>
-      <td>0.895837</td>
-      <td>0.525830</td>
+      <th>RandomForestClassifier</th>
+      <td>0.972509</td>
+      <td>0.126344</td>
+      <td>0.986063</td>
+      <td>0.616578</td>
     </tr>
   </tbody>
 </table>
@@ -1882,369 +1862,96 @@ df_cv_scores_report
 
 
 
+**Performance on test set**
+
+# Investment Strategy
+
+Given the results from the previous section, we can know formulate investment strategies.
+
+1. only A1, 36 month loans - that would be for CONSERVATIVE INVESTORS such as retirees
+2. only A1-A5, 36 month loans - a little less conservative
+3. only E1-E5, high risk and potentially high-reward (results will confirm or not) for SPECULATION
+
+The function below fits a predictive model with a subset of data depending on the invesment strategy (sub grades and term), and it displays cross-validation score.
 
 
-```python
-df_cv_scores_melt = pd.melt(df_cv_scores_report, id_vars=['model'], var_name='metric', value_name='score')
-sns.set(style="whitegrid")
-g = sns.catplot(x="model", y="score", hue="metric", data=df_cv_scores_melt,
-                height=6, kind="bar", palette="muted",aspect=30/8.27)
-g.axes.flatten()[0].set_title("Models Benchmark via Cross-Validation on validation set")
-g.set_ylabels("Score");
+
 ```
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_165_0.png)
-
-
-Some models were also evaluated on a scaled version of the data (with features standardized with zero mean and standard deviation 1). The results below show that standardizing the data did not improve the prediction accuracy.
-
-### Random Forest Classifier is the best performer
-
-The benchmark perform
-
-**Threshold tuning**
-
-It is more flexible to predict probabilities of a loan belonging to each class rather than predicting classes directly. Probabilities may be interpreted using different thresholds that allow us to trade-off concerns in the errors made by the model, such as the number of false negatives which outweighs the cost of false positives. We will use ROC Curves and Precision-Recall curves as diagnostic tools.
-
-
-
-```python
-predict_evaluate_cm(randomf_optim, X_val, y_val, threshold=.9)
-```
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_170_0.png)
-
-
-As shown above if we set the threshold too high, we end up with a very bad prediction of Charge Offs. Although we predict all Fully Paid loans right, our investor will have to deal with a very high number of loans failures.
-
-Below, by choosing a lower threshold the investor will miss some business opportunities, but will secure his finance by correctly identifying those loans with high risk of failures.
-
-
-
-```python
-predict_evaluate_cm(randomf_optim, X_val, y_val, threshold=.1)
-```
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_172_0.png)
-
-
-By choosing a **threshold of 0.3**, we have ca. 12% of false positives. These are loans which have charged off but our model failed to identify them. We will assume that such a threshold is an acceptable compromise for our investment strategy. 
-
-
-
-```python
-threshold = .3
+def simulate_strategy(df_loan_strategy, sub_grades=['A1'], term=36):
+    df_loan_strategy = df_loan_strategy[df_loan_strategy.loan_status.isin(['Charged Off', 'Fully Paid'])]
+    df_loan_strategy.replace({'loan_status':{'Charged Off': 0, 'Fully Paid': 1}}, inplace=True)
+    df_loan_strategy.loan_status = df_loan_strategy.loan_status.astype('int')
+    df_loan_strategy = df_loan_strategy[df_loan_strategy.term==term]
+    df_loan_strategy = df_loan_strategy[df_loan_strategy.sub_grade.isin(sub_grades)]
+    not_predictor_strategy = not_predictor + ['sub_grade','issue_m', 'addr_state', 'zip_code','earliest_cr_line']
+    df_loan_strategy.drop(columns=list(set(not_predictor_strategy) & set(df_loan_strategy.columns.values)), inplace=True)
+    df_loan_strategy = pd.get_dummies(df_loan_strategy, columns=['emp_length', 'home_ownership'], drop_first=True)
+    df_loan_strategy = df_loan_strategy[list(set(features_list_new).intersection(set(df_loan_strategy.columns.values)))+['loan_status']]
+    #df_loan_strategy = df_loan_strategy.sample(frac=.1)
+    X, Y = df_loan_strategy[df_loan_strategy.columns.difference(['loan_status'])], df_loan_strategy['loan_status']
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, random_state=9001)
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=9001)
+    smote = SMOTE(ratio='minority')
+    X_train, y_train = smote.fit_sample(X_train, y_train)
+    #ros = RandomOverSampler()
+    #X_train, y_train = ros.fit_sample(X_train, y_train)
+    model = RandomForestClassifier(n_estimators=100, max_depth=10) # WILLIAM - change this model if necessary
+    fit_predict_evaluate(model, X_train, y_train, X_val, y_val)
+    return X_train, y_train, X_val, y_val, X_test, y_test
 ```
 
 
 
 
-```python
-predict_evaluate_cm(randomf_optim, X_val, y_val, threshold=threshold)
+```
+df_loan_strategy = df_loan_accepted_census_cleaned.copy()
+X_train_strategy, y_train_strategy, X_val_strategy, y_val_strategy, X_test_strategy, y_test_strategy = simulate_strategy(df_loan_strategy, sub_grades=['A1'], term=36)
 ```
 
 
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_175_0.png)
-
-
-### ROC benchmark
-
-
-
-```python
-fig, ax = plt.subplots(1,1,figsize=(15,10))
-models = [randomf_optim, dt_model, log_reg, ab_model, xgb_model, mlp_model, qda_model, nb_model, svm_model, knn_model]
-for model in models:
-    model_name = model.__class__.__name__
-    if  model_name == 'RandomForestClassifier' or \
-        model_name == 'XGBClassifier' or \
-        model_name == 'AdaBoostClassifier' or \
-        model_name == 'DecisionTreeClassifier':
-        Xval = X_val
-        yval = y_val
-    elif model_name == 'MultinomialNB':
-        Xval = X_val_desc_features
-        yval = y_val_desc
-    else:
-        Xval = X_val_scaled
-        yval = y_val
-    y_pred = df_y_preds[model_name]
-    y_pred_proba = df_y_pred_probas[model_name]
-    [fpr, tpr, thr] = roc_curve(yval, y_pred_proba)
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/pandas/core/generic.py:4550: SettingWithCopyWarning: 
+    A value is trying to be set on a copy of a slice from a DataFrame.
+    Try using .loc[row_indexer,col_indexer] = value instead
     
-    ax.plot(fpr, tpr, label='{0} - auc = {1:.2%}'.format(model_name,auc(fpr, tpr)))
-    if model_name == 'RandomForestClassifier':
-        idx = np.min(np.where(tpr > threshold))
-        ax.plot([0,fpr[idx]], [tpr[idx],tpr[idx]], 'k--', label='', color='b')
-        ax.plot([fpr[idx],fpr[idx]], [0,tpr[idx]], 'k--', label='', color='b')
-ax.plot([0, 1], [0, 1], 'k--')
-plt.xlim([0.0, 1.0])
-plt.ylim([0.0, 1.05])
-plt.xlabel('False Positive Rate (1 - specificity)', fontsize=14)
-plt.ylabel('True Positive Rate (recall)', fontsize=14)
-plt.title('Receiver operating characteristic (ROC) curve')
-plt.legend(loc="lower right")
-plt.show()
-```
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_177_0.png)
-
-
-Combining all predictions and creating a heatplot of their correlations gives us the following view. Supoprt Vector Machine is excluded from this plot since it computes distances instead of probabilities, which can only be estimated at the cost of extensive computation. 
-
-
-
-```python
-df_y_val_prob = df_y_pred_probas[df_y_pred_probas.columns.difference(['SVC'])]
-sns.heatmap(df_y_val_prob.corr())
-plt.show()
-```
-
-
-
-![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_179_0.png)
-
-
-It is pretty clear from these visualizations that the predictions of Naive Bayes classifier, Multilayer Perceptron, QDA, Logistic Regression are very opposite from predictions of other models. The tree-based classifiers are producing rvery similar results to each other, showing their similar internal structure. The predictions of KNN classifier are also very less correlated with the predictions of other classifiers. 
-
-Below we compute the Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores using the average probabilities from our classifiers (excluding support vector machine).
-
-
-
-```python
-y_val_pred_avg = adjust_proba(df_y_val_prob.mean(axis=1), threshold)
-avg_score = roc_auc_score(y_val, y_val_pred_avg)
-```
-
-
-
-
-```python
-y_val_pred_rf = df_y_preds['RandomForestClassifier']
-rf_score = roc_auc_score(y_val, y_val_pred_rf)
-```
-
-
-
-
-```python
-print("With probability threshold {} on validation set", threshold)
-print("  ROC AUC score obtained by averaging probabilities of several classifiers is {0:.2%}".format(avg_score))
-print("  ROC AUC score obtained by the Random Forest Classifier is {0:.2%})".format(rf_score))
-```
-
-
-    With probability threshold {} on validation set 0.3
-      ROC AUC score obtained by averaging probabilities of several classifiers is 71.22%
-      ROC AUC score obtained by the Random Forest Classifier is 87.39%)
+    See the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+      regex=regex)
+    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/pandas/core/generic.py:3643: SettingWithCopyWarning: 
+    A value is trying to be set on a copy of a slice from a DataFrame.
+    Try using .loc[row_indexer,col_indexer] = value instead
+    
+    See the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+      self[name] = value
     
 
-This result suggests that an Ensemble technique, e.g. Stacking would most probably not bring considerable improvment in the reduction of false negatives (loan predicted fully paid, but in reality charge off). 
-
-
-## Motivation
-
-Accuracy, ROC, MSE, are terms familiar to a data scientist but, probably not terms an investor would easilly understand. One of the most common metrics to evaluate an investment is Return On Investment (ROI) which can be defined as (FinalValue - InitialValue)/InitialValue. For example, we invest \\$1000 and after a year, our investment is worth \$1200, then our annual ROI is 20%.
-
-We will test our strategy using the 2015 LC loan stats data. 15.68% of the loans in the dataset are classified as False (failed).<br><br>
-The goal is to select loans such that the failure rate is less than 15.68%. At this point we are assumung that a selection of loans from the same grade (same interest rate) with a failure rate lower than 15.68% will yield a better ROI for the investor. This needs to be verified and involves looking at the costs of failed loans.<br><br>
-The Random Forest model that was developed in the previous section is used here since it clearly outperformed many different models we have been trying based on the ROC_AUC metric. <br><br>
-A failure rate of 15.68% or more which sounds excellent, but is indeed no better than a random loan selection.<br><br>
-Our Business Objective is to minimize the percentage of Loans selected which are False. This is referred to as the "False Discovery Rate" (FDR). It is equal to 1 - PPV (Positive Prediction Value) [13]. We may reject many loans which are good loans; however, we do not want to select loans that are bad ones.<br><br>
-
-As we saw in the confusion matrix in the previous sections, let's think about what happens when we reduce the threshold from, 50% to 30%. In this case, some loans which would have normally be classified as Fully Paid will be classified as Charge Off. However, the loans that are selected have a higher probability of truly being Charge Off (actual value). Similarly the probability of a selected loan failing will drop. Hence decreasing the threshold increases the quality of the selection with the trade-off that we are throwing away (not selecting) loans which would normally be classified as Good. 
-
-In the next sections we will evaluate this strategy in loans of the same subgrade, as assigned by the LendingClub.
-
-## Prediction
-
-Now it is time to evaluate our model on the left-out data set, which has not been used neither for training nor for cross-validation.
-
-
-
-```python
-y_test_pred = randomf_optim.predict_proba(X_test)[:, 1]
-y_test_pred = adjust_proba(y_test_pred, threshold)
-test_score = accuracy_score(y_test, y_test_pred)
-print("With probability threshold {0}, the Classification Accuracy Score on Test is {1:.2%}".format(threshold, test_score))
-```
-
-
-    With probability threshold 0.3, the Classification Accuracy Score on Test is 91.98%
+    RandomForestClassifier:
+    Accuracy, Training Set: 97.74%
+    K-fold cross-validation results:
+    RandomForestClassifier average accuracy is 0.973
+    RandomForestClassifier average log_loss is 0.126
+    RandomForestClassifier average F1 is 0.986
+    RandomForestClassifier average auc is 0.617
     
 
-These are compeling results showing that the model separates fully paid from charge-off loans with high accuracy on unseen data.
+
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_160_2.png)
 
 
 
-```python
-print("Without our model, the accuracy on Test would have been {0:.2%}".format(1-len(y_test[y_test==1])/len(y_test)))
-```
+![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_160_3.png)
 
 
-    Without our model, the accuracy on Test would have been 81.30%
+    Using a threshold of 0.607 guarantees a sensitivity of 0.951 and a specificity of 0.096, i.e. a false positive rate of 90.38%.
     
 
-## Evaluation
 
-The function below fits a predictive model with a subset of data depending on the invesment strategy (sub grades and term), and it displays the accuracy of our predictions, as well as an estimation of the Return Of Investment campared to the default strategy offered by LendingClub.
+    ---------------------------------------------------------------------------
 
+    ValueError                                Traceback (most recent call last)
 
-
-```python
-def simulate_strategy(df, X_test_df, X_test, sub_grades=['A1'], terms=[36], threshold=.3, verbose=True):
-    # indexes of test loans in the original data frame containing all loans
-    test_idx = X_test_df.index.values
-    # test loans from the original data frame containing all loans
-    df_test = df.loc[test_idx]
-    # subset of candidate test loans, filtered by specific sub grades and terms
-    df_test_candidates = df_test[(df_test.sub_grade.isin(sub_grades)) & (df_test.term.isin(terms))]
-    if df_test_candidates.shape[0] == 0:
-        return 0, 0
-    # indexes of candidate test loans
-    df_test_candidates_idx = df_test_candidates.index.values
-    # candidate test loans in the design matrix
-    X_test_candidates = X_test[df_test.index.isin(df_test_candidates_idx)]
-    y_test_candidates = y_test[df_test.index.isin(df_test_candidates_idx)]
-    # prediction of loan status for candidate test loans
-    y_test_candidates_pred = randomf_optim.predict_proba(X_test_candidates)[:, 1]
-    y_test_candidates_pred = adjust_proba(y_test_candidates_pred, threshold)
-    test_score = accuracy_score(y_test_candidates, y_test_candidates_pred)
-    df_test_candidates = df_test_candidates.assign(loan_status_predicted = y_test_candidates_pred)
-    # calculate the ROI for each candidate test loan
-    df_test_candidates['roi'] = df_test_candidates.apply(calc_roi, axis=1)
-    # calculate average annual ROI for the Lender's CLub 'Automatic' selection
-    roi_lc = df_test_candidates['roi'].mean()
-    # calculate average annual ROI for loans which our model predicts they will be fully paid (prediction is 0)
-    roi_randomf = df_test_candidates[df_test_candidates.loan_status_predicted==0]['roi'].mean()
-    # display results
-    if verbose:
-        print('Investment on sub grades {} and terms {}:'.format(sub_grades, terms))
-        print('')
-        print("  With probability threshold {0}, the selected loans were classified with accuracy {1:.2%}".format(threshold, test_score))
-        print("  Average annual ROI for Lending Club is {}%".format(round(roi_lc,2)))
-        print("  Average annual ROI for our model is {}%".format(round(roi_randomf,2)))
-    return roi_lc, roi_randomf
-```
-
-
-
-
-```python
-#
-#
-def calc_roi(row):
-    def insuf_payment(factor, i):
-
-        loss = int_rcvd + pmt_rcvd + net_recoveries +late_fees - owed
-        factor *= (1 + loss/principal)
-        factor = factor**(1/term)
-        return factor**12 - 1
-    
-    def early_payoff(factor, i):
-        return (factor**(1/(i+1)))**12 - 1 
-        
-    term = row.term
-    int_rcvd = row.total_rec_int
-    pmt_rcvd = row.total_pymnt
-    principal = row.funded_amnt
-    yr_int_rate = row.int_rate
-    mo_int_rate = (1+yr_int_rate)**(1/12) - 1
-    mo_pay = row.installment
-    
-    recoveries = row.recoveries
-    late_fees = row.total_rec_late_fee
-    fee = row.collection_recovery_fee
-    
-    net_recoveries = recoveries - fee
-    
-    owed = principal
-
-    factor = 1
-
-#---Beginning of For------------------------
-    for i in range(0, int(term)):
-
-        if (pmt_rcvd + .50 < mo_pay):
-             return insuf_payment(factor, i)
-        this_interest = owed*mo_int_rate     
-        
-
-        factor *= 1 + mo_int_rate
-
-        if (this_interest > int_rcvd):
-            return early_payoff(factor, i)
-            
-        int_rcvd -= this_interest
-        if owed < mo_pay:
-            return early_payoff(factor, i)
-        pmt_rcvd -= mo_pay
-        owed -= mo_pay - this_interest
-#---End of For-------------------------------
-    return early_payoff(factor, i)
-```
-
-
-We can simulate an improved return of investment on specific loans types below.
-
-
-
-```python
-roi_lc, roi_df = simulate_strategy(df_loan_accepted_census_cleaned, 
-                                                               X_test_df, X_test, 
-                                                               sub_grades=['D5'], 
-                                                               terms=[36], 
-                                                               threshold=.3)
-```
-
-
-    Investment on sub grades ['D5'] and terms [36]:
-    With probability threshold 0.3, the selected loans were classified with accuracy 100.00%
-    Average annual ROI for Lending Club is 18.79%
-    Average annual ROI for our model is 19.72%
+    <ipython-input-233-b45d28757120> in <module>()
+          1 df_loan_strategy = df_loan_accepted_census_cleaned.copy()
+    ----> 2 model_strategy, X_train_strategy, y_train_strategy, X_val_strategy, y_val_strategy, X_test_strategy, y_test_strategy = simulate_strategy(df_loan_strategy, sub_grades=['A1'], term=36)
     
 
-We can simulate the model on all sorts of subgrades/terms combinations
-
-
-
-```python
-sub_grades = df_loan_accepted_census_cleaned.sub_grade.unique()
-terms = df_loan_accepted_census_cleaned.term.unique()
-df_roi = pd.DataFrame(columns=['sub_grad', 'term', 'lc_roi', 'model_roi'])
-i = 0
-for sub_grade in sub_grades:
-    for term in terms:
-        roi_lc, roi_model = simulate_strategy(df_loan_accepted_census_cleaned, 
-                                           X_test_df, X_test, 
-                                           sub_grades=[sub_grade], 
-                                           terms=[term], 
-                                           threshold=threshold,
-                                           verbose=False)
-        df_roi.loc[i]=[sub_grade, term, roi_lc, roi_model]        
-        i += 1
-```
-
-
-
-
-```python
-df_roi.lc_roi.mean(), df_roi.model_roi.mean()
-```
-
-
-
-
-
-    (13.193238871943246, 12.717847455267515)
-
+    ValueError: not enough values to unpack (expected 7, got 6)
 
