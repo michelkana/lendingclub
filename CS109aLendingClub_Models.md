@@ -1,219 +1,15 @@
----
-title: Plots to check our model on fairness and discrimination
-notebook: CS109aLendingClub_Models.ipynb
----
-
-## Contents
 {:.no_toc}
 *  
 {: toc}
 
 
-
-```
-#RUN THIS CELL 
-import requests
-from IPython.core.display import HTML
-styles = requests.get("https://raw.githubusercontent.com/Harvard-IACS/2018-CS109A/master/content/styles/cs109.css").text
-HTML(styles)
-```
-
-
-
-
-
-<style>
-blockquote { background: #AEDE94; }
-h1 { 
-    padding-top: 25px;
-    padding-bottom: 25px;
-    text-align: left; 
-    padding-left: 10px;
-    background-color: #DDDDDD; 
-    color: black;
-}
-h2 { 
-    padding-top: 10px;
-    padding-bottom: 10px;
-    text-align: left; 
-    padding-left: 5px;
-    background-color: #EEEEEE; 
-    color: black;
-}
-
-div.exercise {
-	background-color: #ffcccc;
-	border-color: #E9967A; 	
-	border-left: 5px solid #800080; 
-	padding: 0.5em;
-}
-div.theme {
-	background-color: #DDDDDD;
-	border-color: #E9967A; 	
-	border-left: 5px solid #800080; 
-	padding: 0.5em;
-	font-size: 18pt;
-}
-div.gc { 
-	background-color: #AEDE94;
-	border-color: #E9967A; 	 
-	border-left: 5px solid #800080; 
-	padding: 0.5em;
-	font-size: 12pt;
-}
-p.q1 { 
-    padding-top: 5px;
-    padding-bottom: 5px;
-    text-align: left; 
-    padding-left: 5px;
-    background-color: #EEEEEE; 
-    color: black;
-}
-header {
-   padding-top: 35px;
-    padding-bottom: 35px;
-    text-align: left; 
-    padding-left: 10px;
-    background-color: #DDDDDD; 
-    color: black;
-}
-</style>
-
-
-
-
-
 <hr style="height:2pt">
-
-**Install below package using terminal**
-
-"conda install -c glemaitre imbalanced-learn"
-
-
-
-```
-!pip install --upgrade pip
-!pip install -U sklearn
-!pip install imblearn
-!pip install textblob
-!pip install -U imbalanced-learn
-!pip install xgboost
-!pip install -U seaborn
-```
-
-
-
-
-```
-import numpy as np
-import pandas as pd
-
-import statsmodels.api as sm
-from statsmodels.api import OLS
-
-from sklearn.decomposition import PCA
-from sklearn.linear_model import LogisticRegression
-from sklearn.linear_model import LogisticRegressionCV
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import cross_val_score
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import KFold
-from sklearn.preprocessing import MinMaxScaler
-
-import math
-from scipy.special import gamma
-
-import matplotlib
-import matplotlib.pyplot as plt
-%matplotlib inline
-
-import seaborn as sns
-sns.set()
-
-from IPython.display import display
-
-import random
-```
-
-
-
-
-```
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import cross_val_score
-from sklearn.utils import resample
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble import AdaBoostClassifier
-from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import make_pipeline
-
-from sklearn.preprocessing import FunctionTransformer 
-from imblearn.over_sampling import SMOTE
-from imblearn.over_sampling import RandomOverSampler
-from imblearn.under_sampling import RandomUnderSampler
-from sklearn.feature_selection import SelectFromModel
-
-from sklearn.model_selection import cross_val_predict 
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import StratifiedKFold
-
-from sklearn.metrics import log_loss
-from sklearn.metrics import roc_curve
-from sklearn.metrics import auc
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import roc_auc_score
-from sklearn.metrics import precision_recall_curve
-from sklearn.metrics import classification_report
-
-from sklearn.svm import SVC 
-from xgboost.sklearn import XGBClassifier 
-import itertools
-from sklearn.neighbors import KNeighborsClassifier
-
-from sklearn.feature_extraction.text import TfidfVectorizer
-from nltk.corpus import stopwords
-from textblob import Word
-from sklearn.ensemble import VotingClassifier 
-
-from sklearn.neural_network import MLPClassifier
-from sklearn.naive_bayes import MultinomialNB
-```
-
-
-
-
-```
-import nltk
-nltk.download('wordnet')
-nltk.download('stopwords')
-```
-
-
-    [nltk_data] Downloading package wordnet to
-    [nltk_data]     C:\Users\svi1\AppData\Roaming\nltk_data...
-    [nltk_data]   Package wordnet is already up-to-date!
-    [nltk_data] Downloading package stopwords to
-    [nltk_data]     C:\Users\svi1\AppData\Roaming\nltk_data...
-    [nltk_data]   Package stopwords is already up-to-date!
-    
-
-
-
-
-    True
-
-
-
 
 We will consider the loan status as the response variable, a binary outcome for a loan with value 0 for fully paid and 1 for Charged Off.
 
 We will work with data previously cleaned and augmented with census information. We will use a subset of loans which were fully paid or charged-off.
+
+We further reduce the subset to 10% of loans randomly selected, due to computational constraints while training models.
 
 
 
@@ -225,11 +21,7 @@ np.random.seed(9999)
 
 
 ```
-#df_loan_accepted_census_cleaned = pd.read_csv('http://digintu.tech/tmp/cs109a/df_loan_accepted_census_cleaned_closed_2007-2015.csv')
-
-#df_loan_accepted_census_cleaned = pd.read_csv('http://digintu.tech/tmp/cs109a/df_loan_accepted_census_cleaned_closed_2007-2015_10.csv').sample(frac=.1) 
-
-df_loan_accepted_census_cleaned = pd.read_csv('http://digintu.tech/tmp/cs109a/df_loan_accepted_census_cleaned_closed_2007-2015_10.csv')
+df_loan_accepted_census_cleaned = pd.read_csv('df_loan_accepted_census_cleaned_closed_2007-2015_10.csv')
 ```
 
 
@@ -494,10 +286,6 @@ for var in [x for x in df_loan.columns.values if x not in not_predictor]:
 ```
 
 
-    C:\Anaconda\lib\site-packages\statsmodels\nonparametric\kde.py:488: RuntimeWarning: invalid value encountered in true_divide
-      binned = fast_linbin(X, a, b, gridsize) / (delta * nobs)
-    C:\Anaconda\lib\site-packages\statsmodels\nonparametric\kdetools.py:34: RuntimeWarning: invalid value encountered in double_scalars
-      FAC1 = 2*(np.pi*bw/RANGE)**2
     
 
 
@@ -1346,12 +1134,6 @@ log_reg = fit_predict_evaluate(log_reg, X_train_scaled, y_train, X_val_scaled, y
 
     LogisticRegressionCV:
     Accuracy score on training set is 73.53%
-    
-
-    C:\Anaconda\lib\site-packages\sklearn\linear_model\logistic.py:1920: ChangedBehaviorWarning: The long-standing behavior to use the accuracy score has changed. The scoring parameter is now used. This warning will disappear in version 0.22.
-      ChangedBehaviorWarning)
-    
-
     K-fold cross-validation results on validation set:
      average accuracy is 68.83%
      average F1 is 69.08%
@@ -1380,12 +1162,6 @@ log_reg_pca = fit_predict_evaluate(log_reg, X_train_scaled_pca, y_train, X_val_s
 
     LogisticRegressionCV:
     Accuracy score on training set is 72.73%
-    
-
-    C:\Anaconda\lib\site-packages\sklearn\linear_model\logistic.py:1920: ChangedBehaviorWarning: The long-standing behavior to use the accuracy score has changed. The scoring parameter is now used. This warning will disappear in version 0.22.
-      ChangedBehaviorWarning)
-    
-
     K-fold cross-validation results on validation set:
      average accuracy is 68.43%
      average F1 is 68.72%
@@ -1522,56 +1298,8 @@ xgb_model = XGBClassifier(learningrate =0.05, nestimators=100,
 ```
 xgb_model = fit_predict_evaluate(xgb_model, X_train, y_train, X_val, y_val, df_cv_scores)
 ```
-
-
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:224: DeprecationWarning: The seed parameter is deprecated as of version .6.Please use random_state instead.seed is deprecated.
-      'seed is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:231: DeprecationWarning: The nthread parameter is deprecated as of version .6.Please use n_jobs instead.nthread is deprecated.
-      'nthread is deprecated.', DeprecationWarning)
-    
-
     XGBClassifier:
     Accuracy score on training set is 88.35%
-    
-
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:224: DeprecationWarning: The seed parameter is deprecated as of version .6.Please use random_state instead.seed is deprecated.
-      'seed is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:231: DeprecationWarning: The nthread parameter is deprecated as of version .6.Please use n_jobs instead.nthread is deprecated.
-      'nthread is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:224: DeprecationWarning: The seed parameter is deprecated as of version .6.Please use random_state instead.seed is deprecated.
-      'seed is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:231: DeprecationWarning: The nthread parameter is deprecated as of version .6.Please use n_jobs instead.nthread is deprecated.
-      'nthread is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:224: DeprecationWarning: The seed parameter is deprecated as of version .6.Please use random_state instead.seed is deprecated.
-      'seed is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:231: DeprecationWarning: The nthread parameter is deprecated as of version .6.Please use n_jobs instead.nthread is deprecated.
-      'nthread is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:224: DeprecationWarning: The seed parameter is deprecated as of version .6.Please use random_state instead.seed is deprecated.
-      'seed is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:231: DeprecationWarning: The nthread parameter is deprecated as of version .6.Please use n_jobs instead.nthread is deprecated.
-      'nthread is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:224: DeprecationWarning: The seed parameter is deprecated as of version .6.Please use random_state instead.seed is deprecated.
-      'seed is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:231: DeprecationWarning: The nthread parameter is deprecated as of version .6.Please use n_jobs instead.nthread is deprecated.
-      'nthread is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:224: DeprecationWarning: The seed parameter is deprecated as of version .6.Please use random_state instead.seed is deprecated.
-      'seed is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:231: DeprecationWarning: The nthread parameter is deprecated as of version .6.Please use n_jobs instead.nthread is deprecated.
-      'nthread is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:224: DeprecationWarning: The seed parameter is deprecated as of version .6.Please use random_state instead.seed is deprecated.
-      'seed is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:231: DeprecationWarning: The nthread parameter is deprecated as of version .6.Please use n_jobs instead.nthread is deprecated.
-      'nthread is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:224: DeprecationWarning: The seed parameter is deprecated as of version .6.Please use random_state instead.seed is deprecated.
-      'seed is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:231: DeprecationWarning: The nthread parameter is deprecated as of version .6.Please use n_jobs instead.nthread is deprecated.
-      'nthread is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:224: DeprecationWarning: The seed parameter is deprecated as of version .6.Please use random_state instead.seed is deprecated.
-      'seed is deprecated.', DeprecationWarning)
-    C:\Anaconda\lib\site-packages\xgboost\sklearn.py:231: DeprecationWarning: The nthread parameter is deprecated as of version .6.Please use n_jobs instead.nthread is deprecated.
-      'nthread is deprecated.', DeprecationWarning)
-    
-
     K-fold cross-validation results on validation set:
      average accuracy is 85.82%
      average F1 is 79.66%
@@ -1642,54 +1370,8 @@ qda_model = fit_predict_evaluate(qda_model, X_train_scaled, y_train, X_val_scale
 ```
 
 
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    
-
     QuadraticDiscriminantAnalysis:
     Accuracy score on training set is 69.26%
-    
-
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    C:\Anaconda\lib\site-packages\sklearn\discriminant_analysis.py:692: UserWarning: Variables are collinear
-      warnings.warn("Variables are collinear")
-    
-
     K-fold cross-validation results on validation set:
      average accuracy is 67.57%
      average F1 is 70.34%
@@ -1887,12 +1569,6 @@ def clean_text(text):
 ```
 
 
-    <input>:6: DeprecationWarning: invalid escape sequence \w
-    <input>:6: DeprecationWarning: invalid escape sequence \w
-    <input>:6: DeprecationWarning: invalid escape sequence \w
-    <ipython-input-126-d77fbc8874db>:6: DeprecationWarning: invalid escape sequence \w
-      text = text.str.replace('[^\w\s]','')
-    
 
 We first prepare the data.
 
@@ -2524,11 +2200,6 @@ ax.set_title('Correlation between loan and census information');
 ```
 
 
-    C:\Anaconda\lib\site-packages\seaborn\palettes.py:777: DeprecationWarning: object of type <class 'float'> cannot be safely interpreted as an integer.
-      pal = _ColorPalette(pal(np.linspace(0, 1, n_colors)))
-    C:\Anaconda\lib\site-packages\seaborn\palettes.py:777: DeprecationWarning: object of type <class 'float'> cannot be safely interpreted as an integer.
-      pal = _ColorPalette(pal(np.linspace(0, 1, n_colors)))
-    
 
 
 ![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_206_1.png)
