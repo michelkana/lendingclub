@@ -1,49 +1,7 @@
----
-title: Loan Rejection Data Cleaning
-notebook: CS109aLendingClub_Data.ipynb
----
-
 ## Contents
 {:.no_toc}
 *  
 {: toc}
-
-
-
-```
-
-## Project Group #26: Lending Club
-
-
-**Harvard University**<br/>
-**Fall 2018**<br/>
-**Instructors**: Pavlos Protopapas, Kevin Rader<br/>
-**TF**: Jerry Peng<br/>
-**Students**: Michel Atoudem Kana, William Groves, Shourya Veeraganti
-
-<hr style="height:2pt">
-
-
-```
-
-
-
-
-
-```
-#RUN THIS CELL 
-import requests
-from IPython.core.display import HTML
-styles = requests.get("https://raw.githubusercontent.com/Harvard-IACS/2018-CS109A/master/content/styles/cs109.css").text
-HTML(styles)
-
-import numpy as np
-import pandas as pd
-
-```
-
-
-
 Lending Club publishes all its historical data since its inception in 2007. It provides two online, open access datasets for accepted and rejected loans from 2007 to 2018 Q2 for a period of 11.5 years in comma-separated values (CSV) format. Each accepted loan data set has 146 features for each of observation. With basic data cleaning, we removed the index column, columns with constant value and columns associated with 90% missing values that reduced the number of features to 106. Further we identified features which are strongly correlated (r=±0.8) that left us with 82 features on the accepted loan dataset.
 
 To help us in our goal of analyzing fairness and interpretability we downloaded the census data about American people and US economy from United States Census Bureau. We have social, economic, and geographic data from 2016 grouped by zip code provided via Piazza by CS109a instructors. This dataset has 33120 zip codes described by 135 features. Trivial columns such as name, population and others were removed that left us with 85 features. Then the census data was merged with loan accepted data on zipcode ending with 167 features. Then we further used scikit learn feature selection on SelectPercentile reducing 141 predictors for our model analysis. For reconciliation, we downloaded data for all years and then we took a random sample of 10% and saved it to our own server “https://digintu.tech/tmp/cs109a/” stored in the file “loan_accepted_10.csv” for easy access. Also removed empty/duplicate rows that left us with 200K observations.
