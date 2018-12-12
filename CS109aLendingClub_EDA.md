@@ -1,16 +1,18 @@
+## Contents
 {:.no_toc}
 *  
 {: toc}
 
 
+<hr style="height:2pt">
 
 In this section we explore and analyze data about accepted loans since 2007 till 2018. 
 
-We will work with data previously cleaned and augmented with census information.
+We will work with data previously cleaned and augmented with census information. Data cleaning and is in a separate notebook under the Data webpage.
 
 
 
-```python
+```
 df_loan_accepted_cleaned = pd.read_csv('df_loan_accepted_census_cleaned.csv')
 ```
 
@@ -21,7 +23,7 @@ A great deal of our EDA has been devoted to understanding the principal features
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,1, figsize=(20,5))
 sns.countplot(df_loan_accepted_cleaned.issue_q.sort_values(ascending=True), ax=ax)
 plt.title('Number of loans per quarter')
@@ -33,11 +35,11 @@ plt.xticks(rotation=45);
 ![png](CS109aLendingClub_EDA_files/CS109aLendingClub_EDA_8_0.png)
 
 
-As shown below, most loans have been paid. Many of them are current and few have been charged-off. We can also observed a very few amount of default and late loans.
+As shown below, majority of the loans have been "Fully paid". Many of them are current and few have been charged-off. We can also observed a very few amount of default and late loans.
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,1, figsize=(20,5))
 sns.countplot(df_loan_accepted_cleaned.loan_status, ax=ax)
 plt.title('Number of loans per status')
@@ -55,7 +57,7 @@ As depicted below, most loans are 36-months term with interest rate around 12%, 
 
 
 
-```python
+```
 fig, ax = plt.subplots(2,2, figsize=(18,8))
 sns.distplot(df_loan_accepted_cleaned.int_rate, hist = False, kde = True, kde_kws = {'shade': True, 'linewidth': 3}, ax=ax[0][0])
 sns.distplot(df_loan_accepted_cleaned.term, hist = False, kde = True, kde_kws = {'shade': True, 'linewidth': 3}, ax=ax[0][1])
@@ -79,7 +81,7 @@ We also plot the distribution of monthly installments, which follows a similar d
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,2, figsize=(15,3))
 sns.distplot(df_loan_accepted_cleaned.loan_amnt, hist = False, kde = True, kde_kws = {'shade': True, 'linewidth': 3}, label='loan_amnt', ax=ax[0])
 sns.distplot(df_loan_accepted_cleaned.funded_amnt, hist = False, kde = True, kde_kws = {'shade': True, 'linewidth': 3}, label='funded_amnt', ax=ax[0])
@@ -96,11 +98,11 @@ plt.show()
 ![png](CS109aLendingClub_EDA_files/CS109aLendingClub_EDA_14_0.png)
 
 
-The figure below shows that debt consolidation and credit card payments are the major purposes of lending. Most people tend to borrow some money because they previously borrow some.
+The figure below shows that debt consolidation is the first major purpose and credit card payments is the second major purposes of lending. Most people tend to borrow some money because they previously borrow some. There could be an increase in probability of being "charged off" in this case, which we will investigate in our models.
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,1, figsize=(15,5))
 df_loan_accepted_cleaned.purpose.value_counts().plot(kind="bar", ax=ax)
 plt.title('Number of loans per purpose')
@@ -118,7 +120,7 @@ In this section we will have a look at historical loans which were **fully paid*
 
 
 
-```python
+```
 df_loan_for_plot = df_loan_accepted_cleaned.copy()
 df_loan_for_plot = df_loan_for_plot[df_loan_for_plot.success.isin([0,1])]
 ```
@@ -130,7 +132,7 @@ Below plot we notice that most of these grade have equally paid and unpaid amoun
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,1,figsize=(15,10))
 sns.set(style="whitegrid", palette="pastel", color_codes=True)
 sns.violinplot(x="grade", y="funded_amnt_inv", hue="loan_status",
@@ -151,7 +153,7 @@ It appears that the grade assigned by LendingClub accurately model the risk of c
 
 
 
-```python
+```
 df = df_loan_for_plot[['loan_status', 'grade','zip_code']].groupby(['grade','loan_status']).agg(['count']).reset_index()
 df.columns = df.columns.droplevel(level=1)
 unpaid = df[df.loan_status == 'Charged Off']['zip_code']
@@ -162,7 +164,7 @@ df_paid_perc = pd.DataFrame({'grade':['A','B','C','D','E','F','G'], 'perc':np.di
 
 
 
-```python
+```
 sns.barplot(df_paid_perc.grade, df_paid_perc.perc)
 plt.ylabel('percentage (%)')
 plt.title('Percentage of unpaid loans per grade');
@@ -179,7 +181,7 @@ The plot below shows that debt consolidation and credit card payments are the ma
 
 
 
-```python
+```
 sns.catplot(kind='count', data=df_loan_for_plot, y='purpose', hue='loan_status', col='term');
 ```
 
@@ -194,7 +196,7 @@ Below we explore how home ownership and employment length affects the loan outco
 
 
 
-```python
+```
 f, ax = plt.subplots(1,1,figsize=(20, 20))
 #ax.set_aspect("equal")
 term36 = df_loan_for_plot[df_loan_for_plot.term==36].replace({'home_ownership':{'RENT':0,'MORTGAGE':1,'OWN':2,'OTHER':3,'ANY':4,'NONE':5}})
@@ -221,7 +223,7 @@ Looking at the plot there is no increasing relationship between the interest rat
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,1,figsize=(15,7))
 sns.scatterplot(data=df_loan_for_plot[df_loan_for_plot.dti<60], x='int_rate', y='dti', hue='loan_status', alpha=.4, ax=ax)
 ax.set_title('Interest rate vs Debt-to-income ratio');
@@ -238,7 +240,7 @@ The total amount open on revolving bankcards seems not to affect the amount that
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,1,figsize=(15,7))
 sns.scatterplot(data=df_loan_for_plot[df_loan_for_plot.bc_open_to_buy<100000], x='bc_open_to_buy', y='funded_amnt_inv', hue='loan_status', alpha=.6,ax=ax)
 ax.set_title('Funded amount vs Total open to buy on revolving bankcards');
@@ -255,7 +257,7 @@ The likelihood of not being debt is probably not dependend on the credit limit o
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,1,figsize=(15,7))
 sns.scatterplot(data=df_loan_for_plot[df_loan_for_plot.tot_hi_cred_lim<1000000], x='tot_hi_cred_lim', y='total_rev_hi_lim', hue='loan_status', alpha=.6, ax=ax)
 ax.set_title('Total revolving high credit/credit limit vs Total current balance');
@@ -272,7 +274,7 @@ LendingClub seems to allow loan amounts at most the half of annual income of the
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,1,figsize=(15,7))
 sns.scatterplot(data=df_loan_for_plot[df_loan_for_plot.annual_inc<500000], x='annual_inc', y='funded_amnt_inv', hue='loan_status', alpha=.6, ax=ax)
 ax.set_title('Loan amount vs Annual income');
@@ -289,7 +291,7 @@ Assuming that the `Total current balance` provided in the dataset was measured a
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,1,figsize=(15,7))
 sns.scatterplot(data=df_loan_for_plot[df_loan_for_plot.tot_hi_cred_lim<1000000], x='tot_cur_bal', y='total_rev_hi_lim', hue='loan_status', alpha=.6, ax=ax)
 ax.set_title('Total revolving high credit/credit limit vs Total current balance');
@@ -308,7 +310,7 @@ Overall it seems the likelihood of failing to fully payback loans is not affecte
 
 
 
-```python
+```
 df = pd.melt(df_loan_for_plot[['loan_status','female_pct','male_pct','White_pct','Black_pct','Native_pct','Asian_pct','Hispanic_pct','poverty_level_below_pct','employment_2016_rate']], "loan_status", var_name="measurement")
 df.head()
 ```
@@ -379,7 +381,7 @@ df.head()
 
 
 
-```python
+```
 f, ax = plt.subplots(figsize=(10,7))
 sns.despine(bottom=True, left=True)
 sns.stripplot(x="value", y="measurement", hue="loan_status",
@@ -406,7 +408,7 @@ Looking at bottom left part of the heatmap below, we can say that the correlatio
 
 
 
-```python
+```
 cols1 = ['loan_status','female_pct','male_pct','White_pct','Black_pct','Native_pct','Asian_pct','Hispanic_pct','poverty_level_below_pct','employment_2016_rate']
 cols2 = ['int_rate','term','dti','bc_open_to_buy','funded_amnt_inv','tot_hi_cred_lim','tot_cur_bal','annual_inc','total_bc_limit','bc_util','total_rev_hi_lim','mo_sin_old_rev_tl_op','total_bal_ex_mort','acc_open_past_24mths','mo_sin_old_il_acct']
 corr = df_loan_for_plot[cols1 + cols2].corr()
@@ -431,7 +433,7 @@ We will work with data previously cleaned and augmented with census information.
 
 
 
-```python
+```
 df_loan_rejected_cleaned = pd.read_csv('df_loan_rejected_census_cleaned.csv')
 ```
 
@@ -440,7 +442,7 @@ In order to understand the factors which cause a loan request to be rejected, we
 
 
 
-```python
+```
 df_loan_rejected_cleaned['reject_status'] = 1
 df_loan_accepted_cleaned['reject_status'] = 0
 df_loan_accepted_cleaned['risk_score'] = -1
@@ -449,7 +451,7 @@ df_loan_accepted_cleaned['risk_score'] = -1
 
 
 
-```python
+```
 df_loan_requests = pd.concat([df_loan_rejected_cleaned, df_loan_accepted_cleaned[df_loan_rejected_cleaned.columns]])
 ```
 
@@ -460,7 +462,7 @@ When looking at the rejected loans, i.e. these applications which were not accep
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,1, figsize=(15,5))
 df_loan_rejected_cleaned.addr_state.value_counts().plot(kind="bar", ax=ax)
 plt.title('Number of rejected loans per state')
@@ -479,7 +481,7 @@ Employment length is definetly a significant factor when it comes to accepting o
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,1, figsize=(15,5))
 df_loan_rejected_cleaned.emp_length.value_counts().plot(kind="bar", ax=ax)
 plt.title('Number of rejected loans per employment length')
@@ -498,7 +500,7 @@ Here we are interested in comparing the count of accepted loans over rejected lo
 
 
 
-```python
+```
 import geopandas as gpd
 ```
 
@@ -507,14 +509,14 @@ Load US states shape file
 
 
 
-```python
+```
 df_map = gpd.read_file('data/states.shp')
 ```
 
 
 
 
-```python
+```
 df_map.head()
 ```
 
@@ -604,7 +606,7 @@ Aggregate loan data and calculate reject ratio
 
 
 
-```python
+```
 df_loan_reject_ratio = df_loan_requests[['addr_state','reject_status']].groupby(['addr_state']).agg(['count', 'sum', 'mean'])
 df_loan_reject_ratio.columns = df_loan_reject_ratio.columns.droplevel(level=0)
 df_loan_reject_ratio = df_loan_reject_ratio[['mean']].rename(columns={'mean':'ratio'})
@@ -614,7 +616,7 @@ df_loan_reject_ratio.ratio = (1 - df_loan_reject_ratio.ratio)*100
 
 
 
-```python
+```
 df_loan_reject_ratio.sort_values(by='ratio', ascending=True).head()
 ```
 
@@ -678,7 +680,7 @@ Merge map data with loan reject ratio
 
 
 
-```python
+```
 df_loan_reject_ratio_map = df_map.set_index('STATE_ABBR').join(df_loan_reject_ratio)
 df_loan_reject_ratio_map.head()
 ```
@@ -780,7 +782,7 @@ Below we plot the ratio of rejected applications over accepted loans on a map of
 
 
 
-```python
+```
 fig, ax = plt.subplots(1, figsize=(15, 15))
 df_loan_reject_ratio_map.plot(column='ratio', cmap='Blues', linewidth=0.8, ax=ax, edgecolor='0.8')
 ax.axis('off')
@@ -802,7 +804,7 @@ Below we use the census data at hand and compare the top 5 states with high reje
 
 
 
-```python
+```
 census_cols = ['Population', 'median_income_2016', 
                'male_pct', 'female_pct', 
                'Black_pct', 'White_pct', 'Native_pct', 'Asian_pct', 'Hispanic_pct', 
@@ -812,7 +814,7 @@ census_cols = ['Population', 'median_income_2016',
 
 
 
-```python
+```
 top_10_high_reject_ratio = df_loan_reject_ratio.sort_values(by='ratio', ascending=False).reset_index().addr_state.values[0:10]
 top_10_high_reject_ratio
 ```
@@ -828,7 +830,7 @@ top_10_high_reject_ratio
 
 
 
-```python
+```
 top_10_low_reject_ratio = df_loan_reject_ratio.sort_values(by='ratio', ascending=True).reset_index().addr_state.values[0:10]
 top_10_low_reject_ratio
 ```
@@ -846,7 +848,7 @@ Mean census values for top 10 states with highest reject ratio.
 
 
 
-```python
+```
 df_loan_requests[df_loan_requests.addr_state.isin(top_10_high_reject_ratio)][census_cols].mean()
 ```
 
@@ -875,7 +877,7 @@ Mean census values for top 10 states with lowest reject ratio.
 
 
 
-```python
+```
 df_loan_requests[df_loan_requests.addr_state.isin(top_10_low_reject_ratio)][census_cols].mean()
 ```
 
@@ -904,7 +906,7 @@ The mean values above do not help us understanding why those states are so diffe
 
 
 
-```python
+```
 df_loan_requests.issue_q.unique()
 ```
 
@@ -925,7 +927,7 @@ df_loan_requests.issue_q.unique()
 
 
 
-```python
+```
 df_high = df_loan_requests[df_loan_requests.addr_state.isin(top_10_high_reject_ratio)][['employment_2016_rate','addr_state','issue_q']]
 df_low = df_loan_requests[df_loan_requests.addr_state.isin(top_10_low_reject_ratio)][['employment_2016_rate','addr_state','issue_q']]
 df_high['ratio'] = 'high reject ratio'
@@ -938,7 +940,7 @@ df = df[df.issue_q=='2016']
 
 
 
-```python
+```
 fig, ax = plt.subplots(1,1,figsize=(15,10))
 sns.set(style="whitegrid", palette="pastel", color_codes=True)
 sns.violinplot(x="addr_state", y="employment_2016_rate", hue='ratio',
