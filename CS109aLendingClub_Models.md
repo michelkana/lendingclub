@@ -2,62 +2,7 @@
 *  
 {: toc}
 
-<style>
-blockquote { background: #AEDE94; }
-h1 { 
-    padding-top: 25px;
-    padding-bottom: 25px;
-    text-align: left; 
-    padding-left: 10px;
-    background-color: #DDDDDD; 
-    color: black;
-}
-h2 { 
-    padding-top: 10px;
-    padding-bottom: 10px;
-    text-align: left; 
-    padding-left: 5px;
-    background-color: #EEEEEE; 
-    color: black;
-}
 
-div.exercise {
-	background-color: #ffcccc;
-	border-color: #E9967A; 	
-	border-left: 5px solid #800080; 
-	padding: 0.5em;
-}
-div.theme {
-	background-color: #DDDDDD;
-	border-color: #E9967A; 	
-	border-left: 5px solid #800080; 
-	padding: 0.5em;
-	font-size: 18pt;
-}
-div.gc { 
-	background-color: #AEDE94;
-	border-color: #E9967A; 	 
-	border-left: 5px solid #800080; 
-	padding: 0.5em;
-	font-size: 12pt;
-}
-p.q1 { 
-    padding-top: 5px;
-    padding-bottom: 5px;
-    text-align: left; 
-    padding-left: 5px;
-    background-color: #EEEEEE; 
-    color: black;
-}
-header {
-   padding-top: 35px;
-    padding-bottom: 35px;
-    text-align: left; 
-    padding-left: 10px;
-    background-color: #DDDDDD; 
-    color: black;
-}
-</style>
 
 
 We will consider the loan status as the response variable, a binary outcome for a loan with value 1 for fully paid and 0 for Charged Off.

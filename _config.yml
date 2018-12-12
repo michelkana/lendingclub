@@ -1,5 +1,5 @@
 theme: jekyll-theme-primer
-title: LendingClub
+title: CS109a
 description: Investment strategy for LendingClub
 baseurl:
 markdown: kramdown
