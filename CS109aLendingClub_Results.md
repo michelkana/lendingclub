@@ -86,12 +86,6 @@ log_reg = fit_predict_evaluate(log_reg, X_train_scaled, y_train, X_val_scaled, y
 
 
     LogisticRegressionCV:
-    
-
-    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/linear_model/logistic.py:1920: ChangedBehaviorWarning: The long-standing behavior to use the accuracy score has changed. The scoring parameter is now used. This warning will disappear in version 0.22.
-      ChangedBehaviorWarning)
-    
-
     Accuracy score on training set is 73.43%
     K-fold cross-validation results on validation set:
      average accuracy is 67.48%
@@ -122,11 +116,6 @@ log_reg_pca = fit_predict_evaluate(log_reg, X_train_scaled_pca, y_train, X_val_s
 
     LogisticRegressionCV:
     
-
-    /home/ubuntu/anaconda3/envs/python3/lib/python3.6/site-packages/sklearn/linear_model/logistic.py:1920: ChangedBehaviorWarning: The long-standing behavior to use the accuracy score has changed. The scoring parameter is now used. This warning will disappear in version 0.22.
-      ChangedBehaviorWarning)
-    
-
     Accuracy score on training set is 72.87%
     K-fold cross-validation results on validation set:
      average accuracy is 66.99%
@@ -1145,7 +1134,11 @@ model_fairness_check(df_test_candidates, ['female_pct','Black_pct', 'Native_pct'
 
 **Disparate impact** in United States labor law refers to "practices in employment, housing, and other areas that adversely affect one group of people of a protected characteristic more than another, even though rules applied by employers or landlords are formally neutral."[18]. It measures the difference that the majority and protected classes get a particular outcome. We use the function below adapted from [16] to check on disparate impact based on the legal definition of threshold of 80%. This is determined with respect to a protected class.
 
-The input of the function is an array of binary values (1 if the sample is a loan requested by a female, 0 else) and a second array of binary values (1 if the model predicted that the loan will Charge Off, 0 else). If $\dfrac{P(male | chargeoff )}{P(female | chargeoff )} \leq 80%$ then the definition of disparate impact is satisfied. The output is True is the model demonstrates discrimination, False else. The degree of discrimation is also provided between 0 and 1.
+The input of the function is an array of binary values (1 if the sample is a loan requested by a female, 0 else) and a second array of binary values (1 if the model predicted that the loan will Charge Off, 0 else). 
+
+If P(male|chargeoff)/P(female|chargeoff) <= 80% then the definition of disparate impact is satisfied. 
+
+The output is True if the model demonstrates discrimination, False else. The degree of discrimation is also provided between 0 and 1.
 
 
 
