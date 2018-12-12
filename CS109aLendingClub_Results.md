@@ -1,4 +1,3 @@
-## Contents
 {:.no_toc}
 *  
 {: toc}
