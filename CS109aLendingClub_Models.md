@@ -1077,7 +1077,7 @@ def fit_predict_evaluate(model, Xtrain, ytrain, Xval, yval, df_cv_scores):
 
 ## Decision Tree
 
-
+We first try a simple decision tree of full depth.
 
 ```
 dt_model = DecisionTreeClassifier(max_depth = None)
@@ -1112,7 +1112,7 @@ dt_model = fit_predict_evaluate(dt_model, X_train, y_train, X_val, y_val, df_cv_
 
 ## Logistic Regression
 
-We will start with a simple logistic regression model for predicting loan charge-off. The penalty parameter is found via cross-validation on the training set.
+We investigate with a simple logistic regression model for predicting loan charge-off. The penalty parameter is found via cross-validation on the training set.
 
 
 
@@ -1159,7 +1159,7 @@ log_reg = fit_predict_evaluate(log_reg, X_train_scaled, y_train, X_val_scaled, y
 
 **Logistic Regression with PCA**
 
-
+Dimension reduction with PCA has a slightly negative impact on the cross-validation ROC-AUC score.
 
 ```
 log_reg_pca = fit_predict_evaluate(log_reg, X_train_scaled_pca, y_train, X_val_scaled_pca, y_val, df_cv_scores_pca)
@@ -1185,7 +1185,6 @@ log_reg_pca = fit_predict_evaluate(log_reg, X_train_scaled_pca, y_train, X_val_s
     Using a threshold of 0.601 guarantees a sensitivity of 0.500 and a specificity of 0.812, i.e. a false positive rate of 18.75%.
     
 
-PCA causes a decrease in average AUC.
 
 ## Random Forest
 
@@ -1285,9 +1284,11 @@ ax[1].legend(fontsize=12);
 ![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_127_0.png)
 
 
+After ca. 10 iterations, our AdaBoosting Classifier does not improve on the validation set.
+
 ### XG Boosting
 
-
+Gradient Boosting achieves better accuracy than AdaBoosting.
 
 ```
 xgb_model = XGBClassifier(learningrate =0.05, nestimators=100,
@@ -1325,7 +1326,7 @@ xgb_model = fit_predict_evaluate(xgb_model, X_train, y_train, X_val, y_val, df_c
 
 ## SVM
 
-
+Support Vectore Machine is a computation expensive technique, which we tried with a lot of patience. It provided low predictive power compared to other techniques.
 
 ```
 svm_model = SVC(gamma=0.1, C=0.01, kernel="linear")
@@ -1360,7 +1361,7 @@ svm_model = fit_predict_evaluate(svm_model, X_train_scaled, y_train, X_val_scale
 
 ## QDA
 
-In this section we try a QDA model.
+Our Quadratic Discriminant Analysis had some issues with collinearity, this was reflected in bad scores.
 
 
 
@@ -1395,7 +1396,8 @@ qda_model = fit_predict_evaluate(qda_model, X_train_scaled, y_train, X_val_scale
     Using a threshold of 0.999 guarantees a sensitivity of 0.500 and a specificity of 0.804, i.e. a false positive rate of 19.64%.
     
 
-
+Reducing dimensions with Principal Components Analysis improved QDA accuracy, but still it was not as good as tree-based classifiers or logistic regression.
+	
 
 ```
 qda_model_pca = fit_predict_evaluate(qda_model, X_train_scaled_pca, y_train, X_val_scaled_pca, y_val, df_cv_scores_pca)
@@ -1423,6 +1425,8 @@ qda_model_pca = fit_predict_evaluate(qda_model, X_train_scaled_pca, y_train, X_v
 
 ## KNN
 
+
+Our k-NN model was very slow to fit. We had to reduce the number of neighbors from 7 to 3 in order to do cross-validation with 5 folds for 3 metrics. At the end the classification scores did not beat the other models.
 
 
 ```
@@ -1485,6 +1489,8 @@ knn_model_pca = fit_predict_evaluate(knn_model, X_train_scaled_pca, y_train, X_v
 ## Multilayer Perceptron
 
 
+A neural network was fitted on our training data and was a proof that deep learning might be a path to explore in loan outcome prediction.
+
 
 ```
 mlp_model = MLPClassifier(hidden_layer_sizes=(50), batch_size=50, learning_rate='constant', learning_rate_init=0.0005, early_stopping=True)
@@ -1545,17 +1551,18 @@ mlp_model_pca = fit_predict_evaluate(mlp_model, X_train_scaled_pca, y_train, X_v
 
 ## Loan Description
 
+Additionally to using quantified predictors, we were curious to see if text would give us some predictive power.
+
 Some studies [10] suggest that words used on loan applications can predict the likelihood of charge-off.
-In this section we use natural language processing algorithms to extract features from the loan title and description filled in by the borrower when requesting the loan. We then use a Naive Bayes classifier and a random forest for this task.
+In this section we use natural language processing algorithms to extract features from the loan title and description filled in by the borrower when requesting the loan. We then use a Naive Bayes classifier for the classification task.
 
-The function below performs the following preprocessingon the text data:
+The function below performs the following preprocessing on the text data:
 
-- lower case
-- remove punctuation
-- remove commonly occuring words using predefined libraries
-- remove suffices, like “ing”, “ly”, “s”, etc. by a simple rule-based approach
-
-
+- lower case,
+- remove punctuation,
+- remove commonly occuring words using predefined libraries,
+- remove suffices, like “ing”, “ly”, “s”, etc. by a simple rule-based approach.
+- correct spelling
 
 ```
 def clean_text(text):
@@ -1567,8 +1574,8 @@ def clean_text(text):
     stop = stopwords.words('english')
     text = text.apply(lambda x: " ".join(x for x in x.split() if x not in stop))
     # correct spelling
-    #from textblob import TextBlob
-    #text = text.apply(lambda x: str(TextBlob(x).correct()))
+    from textblob import TextBlob
+    text = text.apply(lambda x: str(TextBlob(x).correct()))
     # lemmatization     
     text = text.apply(lambda x: " ".join([Word(word).lemmatize() for word in x.split()]))
     return text
@@ -1590,14 +1597,13 @@ df_desc.replace({'loan_status':{'Charged Off': 0, 'Fully Paid': 1}}, inplace=Tru
 ```
 
 
-The feature is the merged loan title and description, the response variable is the loan status.
+We use the merged loan title and description as feature, the response variable is the loan status.
 
 
 
 ```
 X_desc = df_desc.title
 y_desc = df_desc.loan_status
-#X_train_desc, X_test_desc, y_train_desc, y_test_desc = train_test_split(X_desc, y_desc, test_size= 0.2, random_state=13)
 X_train_desc, X_test_desc, y_train_desc, y_test_desc = train_test_split(X_desc, y_desc, test_size=0.1, stratify=y_desc)
 X_train_desc, X_val_desc, y_train_desc, y_val_desc = train_test_split(X_train_desc, y_train_desc, test_size=0.2, stratify=y_train_desc)
 
@@ -1608,7 +1614,7 @@ X_test_desc, y_test_desc = resample(X_test_desc, y_test_desc, n_samples=round(y_
 ```
 
 
-We extract TF-IDF features. TF-IDF is the multiplication of the TF and IDF.  The IDF of each word is the log of the ratio of the total number of rows to the number of rows in which that word is present.The TF or term frequency is the ratio of the count of a word present in a sentence, to the length of the sentence.
+We extract TF-IDF features. TF-IDF is the multiplication of the TF and IDF.  The IDF of each word is the log of the ratio of the total number of rows to the number of rows in which that word is present. TF or term frequency is the ratio of the count of a word present in a sentence, to the length of the sentence.
 
 
 
@@ -1618,7 +1624,7 @@ word_vectorizer = TfidfVectorizer(
     sublinear_tf=True,
     strip_accents='unicode',
     analyzer='word',
-    token_pattern=r'\w{2,}',  #vectorize 2-character words or more
+    token_pattern=r'\w{2,}', 
     ngram_range=(1, 1),
     max_features=30000)
 
@@ -1679,7 +1685,10 @@ nb_model = fit_predict_evaluate(nb_model, X_train_desc_features, y_train_desc, X
     Using a threshold of 0.804 guarantees a sensitivity of 0.944 and a specificity of 0.060, i.e. a false positive rate of 93.95%.
     
 
-Both Naive Bayes and random forest did not find enough information that would clearly distinguish the two classes of loans.
+Our Naive Bayes did not find enough information that would clearly distinguish the two classes of loans. 
+
+However the ROC-AUC score was above 50%, this was a suprise for us. 
+The F1 score and classification accuracy was more than average. We see this as a sign that the text data contains a sort of signal that if properly preprocessed, would contribute in a loan classification problem.
 
 
 ## Model Selection
@@ -1689,8 +1698,6 @@ Both Naive Bayes and random forest did not find enough information that would cl
 All models investigated in this project are compared in the table below. The performance was evaluated in a out-of-sample manner on the validation set using 3-folds cross-validation.
 
 For each model, we can compare different metrics (accuracy, F1, ROC_AUC). We are also able to compare models using the metric ROC_AUC, which reflect their performance when we set probability cutoff at 50%. 
-
-The scoring results is summarised below.
 
 
 
@@ -1824,16 +1831,18 @@ ax.set_ylabel("Score");
 ![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_165_0.png)
 
 
-Some models were also evaluated on a scaled version of the data (with features standardized with zero mean and standard deviation 1). The results below show that standardizing the data did not improve the prediction accuracy.
+Some models were also evaluated on a scaled version of the data (with features standardized with zero mean and standard deviation 1). 
+The results show us that standardizing the data did not improve the prediction accuracy.
 
 
 ### Random Forest Classifier is the best performer
 
-The benchmark perform
+Although Multinomial Bayes Classifier had the best F1 score, the RandomForestClassifier beat all models when looking at classification accuracy and ROC-AUC score. 
 
 **Threshold tuning**
 
-It is more flexible to predict probabilities of a loan belonging to each class rather than predicting classes directly. Probabilities may be interpreted using different thresholds that allow us to trade-off concerns in the errors made by the model, such as the number of false negatives which outweighs the cost of false positives. We will use ROC Curves and Precision-Recall curves as diagnostic tools.
+It is more flexible to predict probabilities of a loan belonging to each class rather than predicting classes directly. Probabilities may be interpreted using different thresholds that allow us to trade-off concerns in the errors made by the model, such as the number of false negatives which outweighs the cost of false positives. It can be expensive to end up investing in a loan that will fail although the model predicted success.
+We will use ROC Curves and Precision-Recall curves as diagnostic tools.
 
 
 
