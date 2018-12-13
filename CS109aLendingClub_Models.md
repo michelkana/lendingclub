@@ -1837,7 +1837,7 @@ The results show us that standardizing the data did not improve the prediction a
 
 ### Random Forest Classifier is the best performer
 
-Although Multinomial Bayes Classifier had the best F1 score, the RandomForestClassifier beat all models when looking at classification accuracy and ROC-AUC score. 
+Although Multinomial Bayes Classifier had the best F1 score, the RandomForestClassifier beats all models when looking at classification accuracy and ROC-AUC score. 
 
 **Threshold tuning**
 
@@ -1855,9 +1855,10 @@ predict_evaluate_cm(randomf_optim, X_val, y_val, threshold=.9)
 ![png](CS109aLendingClub_Models_files/CS109aLendingClub_Models_171_0.png)
 
 
-As shown above if we set the threshold too high, we end up with a very bad prediction of Charge Offs. Although we predict all Fully Paid loans right, our investor will have to deal with a very high number of loans failures.
+As shown above if we set the threshold too high (0.9 in this case), we end up with a very bad prediction of Charge Offs. A loan would be classified as failure if the model produces a probability greater than 90%.
+Although we predict all Fully Paid loans right, our investor will have to deal with a very high number of loans failures.
 
-Below, by choosing a lower threshold the investor will miss some business opportunities, but will secure his finance by correctly identifying those loans with high risk of failures.
+By choosing a lower threshold (0.1 as shown below), the investor will miss some business opportunities, but will secure his finance by correctly identifying those loans with high risk of failures.
 
 
 

@@ -9,15 +9,15 @@
 
 In classification problems, we can distinguish between the following metrics, whereby **the positive class is Charge Off** and **the negative class is Fully Paid**:
 
-- **Recall or Sensitivity or TPR (True Positive Rate)**: Number of loans correctly identified as positive (fully paid) out of total true positives - TP/(TP+FN)
+- **Recall or Sensitivity or TPR (True Positive Rate)**: Number of loans correctly identified as positive (charged-off) out of total true positives - TP/(TP+FN)
     
-- **Specificity or TNR (True Negative Rate)**: Number of loans correctly identified as negative (charged-off) out of total negatives - TN/(TN+FP)
+- **Specificity or TNR (True Negative Rate)**: Number of loans correctly identified as negative (fully paid) out of total negatives - TN/(TN+FP)
 
-- **Precision**: Number of loans correctly identified as positive (fully paid) out of total items identified as positive - TP/(TP+FP)
+- **Precision**: Number of loans correctly identified as positive (charged-off) out of total items identified as positive - TP/(TP+FP)
     
-- **False Positive Rate or Type I Error**: Number of loans wrongly identified as positive (fully paid) out of total true negatives - FP/(FP+TN)
+- **False Positive Rate or Type I Error**: Number of loans wrongly identified as positive (charged-off) out of total true negatives - FP/(FP+TN)
     
-- **False Negative Rate or Type II Error**: Number of loans wrongly identified as negative (charged-off) out of total true positives - FN/(FN+TP)
+- **False Negative Rate or Type II Error**: Number of loans wrongly identified as negative (fully paid) out of total true positives - FN/(FN+TP)
 
 - A **Confusion Matrix**: visual representation of the number of TP, TN, FP and FN.
 
@@ -43,6 +43,8 @@ Our base model and final model is Random forest classifier.
 
 However, we did a comparison between the simple logistic regression model and our complex random forest model.
 There is a **20.11% increase with area under ROC curve metric, 18.28% increase in CV accuracy metric and 14.48% increase in F1 score**
+
+**We fit, cross-validate and test our final model in the full dataset of charged-off and fully paid loans recorded at LendingClub between 2007 and 2015. These are ca. 760 000 loans.**
 
 ## Logistic Regression
 We will start with a simple logistic regression model for predicting loan charge-off. The penalty parameter is found via cross-validation on the training set.
