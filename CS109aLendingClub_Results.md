@@ -1138,7 +1138,7 @@ model_fairness_check(df_test_candidates, ['female_pct','Black_pct', 'Native_pct'
 
 The input of the function is an array of binary values (1 if the sample is a loan requested by a female, 0 else) and a second array of binary values (1 if the model predicted that the loan will Charge Off, 0 else). 
 
-If P(male\|chargeoff)/P(female\|chargeoff) <= 80% then the definition of disparate impact is satisfied. 
+If P(male/chargeoff)/P(female/chargeoff) <= 80% then the definition of disparate impact is satisfied. 
 
 The output is True if the model demonstrates discrimination, False else. The degree of discrimation is also provided between 0 and 1.
 
