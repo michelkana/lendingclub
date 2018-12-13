@@ -9,7 +9,7 @@ We will consider the loan status as the response variable, a binary outcome for 
 
 We will work with data previously cleaned and augmented with census information. We will use a subset of loans which were fully paid or charged-off.
 
-We further reduce the subset to 10% of loans randomly selected, due to computational constraints while training models.
+We further reduce the subset to 10% of loans randomly selected, due to computational constraints while experimenting with different models. However our final model will be trained on the full LendingClub dataset. 
 
 
 
@@ -35,13 +35,13 @@ df_loan = df_loan[df_loan.loan_status.isin(['Charged Off', 'Fully Paid'])]
 
 ## Features Selection
 
-Our goal is now to do exploratory analysis using predictive models in order to find important features in closed loans.
+Our goal is now to do exploratory analysis using predictive models in order to find important features in closed loans. There are different ways to do this.
 
 Statistical tests can be used to select features that have the strongest relationship with the response variable. 
 
 The Recursive Feature Elimination works by recursively removing variables and building a model on those variables that remain. Model accuracy is used to select the variables which contribute the most to the response.
 
-In this section we use a model-based approach of features selection using bagged trees and PCA. 
+In this section, we start with manual features selection, later we use a model-based approach of features selection using bagged trees and PCA. 
 
 
 
@@ -167,7 +167,7 @@ not_predictor += ['int_rate', 'installment']
 
 As far as FICO is concerned, there are 6 variables. Four of them are determined at the initial loan application, thus we can use them. It doesn't seem that they are updated. 
 
-These 2 are significant and collinear, so only one needs to be selected. We choose
+These 2 are significant and collinear, so only one needs to be selected.
 
     - fico_range_high
     - fico_range_low
@@ -178,7 +178,7 @@ These 2 are not so significant and, we believe are used for joint applications.
     - sec_app_fico_range_low
 
 
-However, These two are created, and undoubtedly updated, throughout the loan life. They should not be used:
+However, the following two are created, and undoubtedly updated, throughout the loan life. They should not be used:
 
     - last_fico_range_high
     - last_fico_range_low
@@ -559,19 +559,20 @@ print('The Charged-Off to Fully Paid ratio in the balanced training set is now: 
 
 ### Model-based features selection
 
+After removing irrelevant features manually as we explained in the previous section, we have further used a Random Forest Classifier on the training dataset in order to get a better understanding on how the remaining features are related to loan outcome as fully paid or unpaid. This has helped us reducing the dimensionality of our data by selecting the most important features.
+
 **Insights on features importance**
 
-Looking at the results above, we can bring in following conclusions:
+Looking at the results we obtained, we can bring in following conclusions:
 
 - The term is the most important element each investor has to care about. 68-months loans are highly risky.
 - The purpose of loan for credit cards payment brings more confidence to an investor.
 - Borrowers who have 10 or more years verified working experience are the most trustworthy investment.
 - Home ownership plays a significant role.
-- The state of California is a significant factor to be considered when looking at the likelihood of Charged-Off
+- The state of California is a significant factor to be considered when looking at the likelihood of Charged-Off.
 - Lenders should look at financial KPIs such as inq_last_6mths, num_tl_op_past_12m and acc_open_past_24mths; not just at FICO score, which are less relevant than these KPIs.
 - Debt-to-income ratio and annual income can be missleading, and shoudn't be always considered as the most important factors.
-- The time of the year when the loan is requested is not so relevant.
-
+- The time of the year when the loan is requested is in some extend relevant, but not too much.
 
 We will use classifiers on the training dataset in order to get a better understanding on how features are related to loan outcome as fully paid or unpaid. This will help us reducing the dimensionality of our data by selecting the most important features.
 
@@ -829,8 +830,7 @@ X_test_scaled_pca = pca_fit.transform(X_test_scaled)
 
 **Helper function for Design Matrix**
 
-We summarize the above code in the function below, which create all design matrices need for our models.
-
+We summarize all the steps we perform above into the function below, which creates all design matrices needed for our models.
 
 
 ```
@@ -912,17 +912,17 @@ At the end we will investigate if ensemble technique via stacking of base learne
 
 ### Scoring
 
-In classification problems, we can distinguish between the following metrics, whereby **the positive class is Charge Off** and **the negative class is Fully Paid**:
+In classification problems, we can distinguish between the following metrics, whereby **the positive class is Charged-Off Off** and **the negative class is Fully Paid**:
 
-- **Recall or Sensitivity or TPR (True Positive Rate)**: Number of loans correctly identified as positive (fully paid) out of total true positives - TP/(TP+FN)
+- **Recall or Sensitivity or TPR (True Positive Rate)**: Number of loans correctly identified as positive (charged-off) out of total true positives - TP/(TP+FN)
     
-- **Specificity or TNR (True Negative Rate)**: Number of loans correctly identified as negative (charged-off) out of total negatives - TN/(TN+FP)
+- **Specificity or TNR (True Negative Rate)**: Number of loans correctly identified as negative (fully paid) out of total negatives - TN/(TN+FP)
 
-- **Precision**: Number of loans correctly identified as positive (fully paid) out of total items identified as positive - TP/(TP+FP)
+- **Precision**: Number of loans correctly identified as positive (charged-off) out of total items identified as positive - TP/(TP+FP)
     
-- **False Positive Rate or Type I Error**: Number of loans wrongly identified as positive (fully paid) out of total true negatives - FP/(FP+TN)
+- **False Positive Rate or Type I Error**: Number of loans wrongly identified as positive (charged-off) out of total true negatives - FP/(FP+TN)
     
-- **False Negative Rate or Type II Error**: Number of loans wrongly identified as negative (charged-off) out of total true positives - FN/(FN+TP)
+- **False Negative Rate or Type II Error**: Number of loans wrongly identified as negative (fully paid) out of total true positives - FN/(FN+TP)
 
 - A **Confusion Matrix**: visual representation of the number of TP, TN, FP and FN.
 
@@ -944,23 +944,25 @@ In loan classification, where positive labels (charged-offs) are few, we would l
 
 **Helper functions for scoring metrics**
 
-The source code from [9] was adjusted in the functions below.
-
+We use the below dataframe to store cross-validation metrics and probabilities.
 
 
 ```
+# dataframe where we track all cross-validation scoring metrics
 df_cv_scores = pd.DataFrame({'model':['dummy'], 'accuracy':[0], 'f1':[0], 'roc_auc':[0]}, 
                             columns=['accuracy','f1','roc_auc'], index=['model'])
 df_cv_scores_pca = df_cv_scores.copy()
 
-df_y_pred_probas = pd.DataFrame() 
-df_y_preds = pd.DataFrame() 
+df_y_pred_probas = pd.DataFrame({'model':np.zeros(X_val.shape[0])}) 
+df_y_preds = pd.DataFrame({'model':np.zeros(X_val.shape[0])})  
 ```
 
 
+The source code from [9] was adjusted in the functions below.
 
 
 ```
+# function adjusts class predictions based on the prediction threshold
 def adjust_proba(probs, threshold):
     return [1 if proba >= threshold else 0 for proba in probs]
 ```
@@ -969,8 +971,9 @@ def adjust_proba(probs, threshold):
 
 
 ```
+# function for computing 5-fold cross-validation scoring scores
 def predict_evaluate_cv(model, X, y, df_cv_scores):
-    cv = StratifiedKFold(n_splits=3, random_state=9999) 
+    cv = StratifiedKFold(n_splits=5, random_state=9999) 
     score_accuracy = cross_val_score(model, X, y, cv=cv, scoring='accuracy').mean()
     score_f1 = cross_val_score(model, X, y, cv=cv, scoring='f1').mean()
     score_auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
@@ -985,6 +988,7 @@ def predict_evaluate_cv(model, X, y, df_cv_scores):
 
 
 ```
+# function for computing the confusion matrix
 def predict_evaluate_cm(model, X, y, threshold=.5):
     model_name = model.__class__.__name__
     classes = ['Fully Paid', 'Charged-Off']
@@ -1025,6 +1029,7 @@ def predict_evaluate_cm(model, X, y, threshold=.5):
 
 
 ```
+# function for compution the roc plot
 def predict_evaluate_roc(model, X, y, threshold=.5):
     y_pred = model.predict(X)
     model_name = model.__class__.__name__
@@ -1058,6 +1063,7 @@ def predict_evaluate_roc(model, X, y, threshold=.5):
 
 
 ```
+# global function for fitting, cross-validating and evaluating a given classifier
 def fit_predict_evaluate(model, Xtrain, ytrain, Xval, yval, df_cv_scores):
     model.fit(Xtrain, ytrain)
     print(model.__class__.__name__+":")

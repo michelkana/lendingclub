@@ -11,10 +11,15 @@ To help us in our goal of analyzing fairness and interpretability we downloaded 
 Second dataset provided online is the rejected loan information, again from 2007 to 2018 Q2 for 11.5 years. This dataset has 9 features. Each application of rejected loan has 9 features and the total amount was worth $22million not funded. These Rejected Loans data files contain the list and details of all loan applications that did not meet Lending Club's credit underwriting policy and the application was rejected.
 
 We group the remaining features from loan accepted merged with census data into 5 classes:
+
 ● loan data: information about the loan at the moment when it was requested
+
 ● loan follow up: information about the loan's follow up throughout its term
+
 ● borrower demographics: information about the borrower
+
 ● borrower financial profile: financial background of the borrower at the moment when he requested the loan
+
 ● borrower financial profile follow up: changes in financial profile of the borrower throughout the loan term
 
 
@@ -47,7 +52,7 @@ We load all loans accepted (approved) and funded on the LendingClub marketplace 
 
 
 ```
-df_loan_accepted = load_data(['loan_accepted_10.csv'])
+df_loan_accepted = pd.read_csv('https://digintu.tech/tmp/cs109a/loan_accepted.csv')
 ```
 
 
@@ -61,7 +66,7 @@ df_loan_accepted.shape
 
 
 
-    (200409, 146)
+    (2200409, 146)
 
 
 
@@ -1147,7 +1152,7 @@ We load all loans rejected (not funded) on the LendingClub marketplace from 2007
 
 
 ```
-df_loan_rejected = pd.read_csv('data/RejectStatsA.csv', skiprows=(1))
+df_loan_rejected = pd.read_csv('https://digintu.tech/tmp/cs109a/df_rejected_loans.csv')
 ```
 
 
@@ -1161,7 +1166,7 @@ df_loan_rejected.shape
 
 
 
-    (755491, 9)
+    (22755491, 9)
 
 
 
@@ -1264,7 +1269,7 @@ We load census data from 2016 into the dataframe `df_census`.
 
 
 ```
-df_census = pd.read_csv('data/zipcode_demographics_2016_USA.csv')
+df_census = pd.read_csv('https://digintu.tech/tmp/cs109a/zipcode_demographics_2016_USA.csv')
 ```
 
 
